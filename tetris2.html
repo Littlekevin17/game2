@@ -27,19 +27,36 @@
       align-items: center;
     }
     .tetris-container {
+      max-width: 420px;
+      width: 100vw;
+      margin: 0 auto;
+      padding: 0;
       display: flex;
       flex-direction: column;
       align-items: center;
-      margin-top: 3vh;
-      width: 100vw;
-      max-width: 420px;
     }
-    .top-bar {
-      width: 100%;
+    .infoscore {
       display: flex;
-      justify-content: flex-start;
+      justify-content: space-between;
       align-items: center;
-      margin-bottom: 12px;
+      width: 98vw;
+      max-width: 340px;
+      margin: 0 0 0.7rem 0;
+      gap: 10px;
+    }
+    #score, #level {
+      font-size: 1.5rem;
+      min-width: 70px;
+      text-align: center;
+    }
+    #level-label {
+      font-size: 1.1rem;
+      color: #fff;
+      font-weight: 400;
+      margin-top: 0.2rem;
+      display: block;
+      opacity: 0.7;
+      letter-spacing: 0.5px;
     }
     .back-link {
       display: inline-flex;
@@ -52,7 +69,6 @@
       font-weight: 700;
       text-decoration: none;
       box-shadow: 0 2px 8px rgba(79,140,255,0.08);
-      margin-left: 12px;
       font-size: 1rem;
       transition: background 0.18s, color 0.18s;
     }
@@ -60,43 +76,17 @@
       background: var(--primary);
       color: #fff;
     }
-    .infoscore {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 28px;
-      margin-bottom: 1.2rem;
-      width: 100%;
-    }
-    #score, #level {
-      font-size: 2.2rem;
-      color: #fff;
-      font-weight: 700;
-      text-shadow: 0 2px 8px rgba(0,0,0,0.18);
-      letter-spacing: 1px;
-      margin: 0;
-      padding: 0;
-      line-height: 1;
-    }
-    #level-label {
-      font-size: 1.1rem;
-      color: #fff;
-      font-weight: 400;
-      margin-top: 0.2rem;
-      display: block;
-      opacity: 0.7;
-      letter-spacing: 0.5px;
-    }
     #board {
+      aspect-ratio: 10 / 16;
+      width: 96vw;
+      max-width: 320px;
+      height: auto;
+      max-height: 60vh;
       background: var(--board-bg);
       border-radius: var(--radius);
       box-shadow: 0 6px 32px rgba(33,147,176,0.18);
       position: relative;
-      width: 90vw;
-      max-width: 280px;
-      aspect-ratio: 10 / 16;
-      height: auto;
-      margin-bottom: 2vh;
+      margin-bottom: 1.2vh;
       overflow: hidden;
       touch-action: none;
     }
@@ -126,20 +116,19 @@
     .controls {
       display: flex;
       justify-content: center;
-      gap: 18px;
-      margin-top: 1.5vh;
-      width: 100%;
-      max-width: 350px;
+      gap: 10px;
+      margin-top: 0.5vh;
+      max-width: 98vw;
       user-select: none;
     }
     .ctrl-btn {
       background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
       border: none;
       border-radius: 50%;
-      width: 56px;
-      height: 56px;
+      width: 44px;
+      height: 44px;
       color: #fff;
-      font-size: 2rem;
+      font-size: 1.5rem;
       box-shadow: 0 2px 8px rgba(79,140,255,0.10);
       display: flex;
       align-items: center;
@@ -192,37 +181,32 @@
     }
     @media (max-width: 600px) {
       .tetris-container {
-        margin-top: 1vh;
-      }
-      #board {
-        width: 96vw;
-        max-width: 96vw;
-      }
-      .controls {
-        gap: 10px;
-        max-width: 98vw;
-      }
-      .ctrl-btn {
-        width: 48px;
-        height: 48px;
-        font-size: 1.5rem;
-      }
-      #game-over {
-        padding: 18px 10px;
-        font-size: 1rem;
+        margin-top: 0.5vh;
       }
       .infoscore {
-        gap: 12px;
+        max-width: 98vw;
+        font-size: 1.1rem;
+      }
+      #board {
+        width: 98vw;
+        max-width: 98vw;
+        max-height: 56vh;
+      }
+      .controls {
+        gap: 7px;
+      }
+      .ctrl-btn {
+        width: 38px;
+        height: 38px;
+        font-size: 1.2rem;
       }
     }
   </style>
 </head>
 <body>
   <div class="tetris-container">
-    <div class="top-bar">
-      <a href="index.html" class="back-link"><i class="fa fa-arrow-left"></i> Accueil</a>
-    </div>
     <div class="infoscore">
+      <a href="index.html" class="back-link"><i class="fa fa-arrow-left"></i> Accueil</a>
       <div>
         <div id="score">0</div>
         <span id="level-label">Score</span>
@@ -245,7 +229,6 @@
       <button class="restart-btn">Rejouer</button>
     </div>
   </div>
-  <!-- Sons -->
   <audio id="audio-line" src="sounds/line-success.wav"></audio>
   <audio id="audio-gameover" src="sounds/game-over.wav"></audio>
   <script>
@@ -493,17 +476,57 @@
       }
     });
 
-    // Contrôles tactiles
+    // Contrôles tactiles boutons
     document.getElementById('left').addEventListener('touchstart', e => { e.preventDefault(); move(-1); });
     document.getElementById('right').addEventListener('touchstart', e => { e.preventDefault(); move(1); });
     document.getElementById('rotate').addEventListener('touchstart', e => { e.preventDefault(); rotate(); });
     document.getElementById('down').addEventListener('touchstart', e => { e.preventDefault(); drop(); });
 
-    // Contrôles boutons
+    // Contrôles boutons click
     document.getElementById('left').addEventListener('click', () => move(-1));
     document.getElementById('right').addEventListener('click', () => move(1));
     document.getElementById('rotate').addEventListener('click', () => rotate());
     document.getElementById('down').addEventListener('click', () => drop());
+
+    // Contrôles tactiles drag sur le plateau
+    let dragStartX = null, dragStartY = null, dragMoved = false;
+
+    document.getElementById('board').addEventListener('touchstart', function(e) {
+      if(gameOver) return;
+      const t = e.touches[0];
+      dragStartX = t.clientX;
+      dragStartY = t.clientY;
+      dragMoved = false;
+    }, {passive: false});
+
+    document.getElementById('board').addEventListener('touchmove', function(e) {
+      if(gameOver || dragStartX === null) return;
+      const t = e.touches[0];
+      const dx = t.clientX - dragStartX;
+      const dy = t.clientY - dragStartY;
+      if(Math.abs(dx) > 20 && Math.abs(dx) > Math.abs(dy)) {
+        if(dx > 0) move(1);
+        else move(-1);
+        dragStartX = t.clientX;
+        dragMoved = true;
+      }
+      if(Math.abs(dy) > 28 && Math.abs(dy) > Math.abs(dx)) {
+        drop();
+        dragStartY = t.clientY;
+        dragMoved = true;
+      }
+      e.preventDefault();
+    }, {passive: false});
+
+    document.getElementById('board').addEventListener('touchend', function(e) {
+      if(gameOver) return;
+      if(!dragMoved) {
+        rotate();
+      }
+      dragStartX = null;
+      dragStartY = null;
+      dragMoved = false;
+    }, {passive: false});
 
     // Restart
     document.querySelector('.restart-btn').addEventListener('click', startGame);
