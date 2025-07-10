@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Tetris Moderne</title>
+  <link href="https://fonts.googleapis.com/css?family=Montserrat:700,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <style>
+    :root {
+      --primary: #4f8cff;
+      --secondary: #ffb347;
+      --bg: #f5f7fa;
+      --board-bg: #222;
+      --block-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      --radius: 16px;
+      --block-radius: 7px;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(120deg, #6dd5ed 0%, #2193b0 100%);
+      min-height: 100vh;
+      font-family: 'Montserrat', Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .tetris-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 3vh;
+      width: 100vw;
+      max-width: 420px;
+    }
+    .top-bar {
+      width: 100%;
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #fff;
+      color: var(--primary);
+      border-radius: 30px;
+      padding: 7px 16px;
+      font-weight: 700;
+      text-decoration: none;
+      box-shadow: 0 2px 8px rgba(79,140,255,0.08);
+      margin-left: 12px;
+      font-size: 1rem;
+      transition: background 0.18s, color 0.18s;
+    }
+    .back-link:hover {
+      background: var(--primary);
+      color: #fff;
+    }
+    #score {
+      font-size: 2.2rem;
+      color: #fff;
+      font-weight: 700;
+      margin-bottom: 1.2rem;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.18);
+      letter-spacing: 1px;
+    }
+    #board {
+      background: var(--board-bg);
+      border-radius: var(--radius);
+      box-shadow: 0 6px 32px rgba(33,147,176,0.18);
+      position: relative;
+      width: 90vw;
+      max-width: 280px;
+      height: 56vw;
+      max-height: 448px;
+      margin-bottom: 2vh;
+      overflow: hidden;
+      touch-action: none;
+    }
+    .block, .empty {
+      position: absolute;
+      width: 10%;
+      height: 6.25%;
+      border-radius: var(--block-radius);
+      box-sizing: border-box;
+      transition: box-shadow 0.2s, background 0.2s;
+    }
+    .block {
+      border: 2px solid #fff;
+      box-shadow: var(--block-shadow);
+      animation: popin 0.2s;
+    }
+    @keyframes popin {
+      0% { transform: scale(0.6); opacity: 0.2; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .empty {
+      opacity: 0.10;
+      background: #fff;
+    }
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 18px;
+      margin-top: 1.5vh;
+      width: 100%;
+      max-width: 350px;
+      user-select: none;
+    }
+    .ctrl-btn {
+      background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+      border: none;
+      border-radius: 50%;
+      width: 56px;
+      height: 56px;
+      color: #fff;
+      font-size: 2rem;
+      box-shadow: 0 2px 8px rgba(79,140,255,0.10);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.18s, transform 0.18s;
+      outline: none;
+    }
+    .ctrl-btn:active {
+      background: linear-gradient(90deg, var(--secondary) 0%, var(--primary) 100%);
+      transform: scale(0.93);
+    }
+    #game-over {
+      position: absolute;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(34,34,34,0.96);
+      color: #fff;
+      padding: 32px 24px;
+      border-radius: 18px;
+      text-align: center;
+      z-index: 10;
+      box-shadow: 0 8px 32px rgba(33,147,176,0.28);
+      display: none;
+      width: 90%;
+      max-width: 270px;
+      animation: popin 0.4s;
+    }
+    #game-over h2 {
+      margin: 0 0 12px 0;
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+    #game-over .restart-btn {
+      margin-top: 20px;
+      background: linear-gradient(90deg, var(--secondary) 0%, var(--primary) 100%);
+      color: #fff;
+      border: none;
+      border-radius: 30px;
+      padding: 10px 28px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(255,179,71,0.13);
+      transition: background 0.18s;
+    }
+    #game-over .restart-btn:active {
+      background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+    }
+    @media (max-width: 600px) {
+      .tetris-container {
+        margin-top: 1vh;
+      }
+      #board {
+        width: 96vw;
+        max-width: 96vw;
+        height: 64vw;
+        max-height: 64vw;
+      }
+      .controls {
+        gap: 10px;
+        max-width: 98vw;
+      }
+      .ctrl-btn {
+        width: 48px;
+        height: 48px;
+        font-size: 1.5rem;
+      }
+      #game-over {
+        padding: 18px 10px;
+        font-size: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="tetris-container">
+    <div class="top-bar">
+      <a href="index.html" class="back-link"><i class="fa fa-arrow-left"></i> Accueil</a>
+    </div>
+    <div id="score">0</div>
+    <div id="board"></div>
+    <div class="controls">
+      <button class="ctrl-btn" id="left" aria-label="Gauche"><i class="fa fa-arrow-left"></i></button>
+      <button class="ctrl-btn" id="rotate" aria-label="Tourner"><i class="fa fa-rotate-right"></i></button>
+      <button class="ctrl-btn" id="right" aria-label="Droite"><i class="fa fa-arrow-right"></i></button>
+      <button class="ctrl-btn" id="down" aria-label="Descendre"><i class="fa fa-arrow-down"></i></button>
+    </div>
+    <div id="game-over">
+      <h2>Game Over</h2>
+      <div id="final-score"></div>
+      <button class="restart-btn">Rejouer</button>
+    </div>
+  </div>
+  <!-- Sons libres de droits (https://freesound.org/) -->
+  <audio id="audio-line" src="https://cdn.pixabay.com/audio/2022/07/26/audio_124bfa1f4d.mp3"></audio>
+  <audio id="audio-gameover" src="https://cdn.pixabay.com/audio/2022/07/26/audio_124bfa1f4d.mp3"></audio>
+  <script>
+    // Palette de couleurs pour les blocs
+    const COLORS = [
+      "#4f8cff", "#ffb347", "#34d399", "#f87171", "#a78bfa", "#facc15", "#fb7185"
+    ];
+    const ROWS = 16, COLS = 10, BLOCK_SIZE = 28; // px pour calculs JS
+    let board = [];
+    let current, next, interval, score = 0, gameOver = false;
+
+    // Définition des formes et rotations
+    const SHAPES = [
+      // I
+      [[[0,0],[0,1],[0,2],[0,3]], [[0,1],[1,1],[2,1],[3,1]]],
+      // O
+      [[[0,0],[0,1],[1,0],[1,1]]],
+      // T
+      [[[0,1],[1,0],[1,1],[1,2]], [[0,1],[1,1],[1,2],[2,1]], [[1,0],[1,1],[1,2],[2,1]], [[0,1],[1,0],[1,1],[2,1]]],
+      // S
+      [[[0,1],[0,2],[1,0],[1,1]], [[0,0],[1,0],[1,1],[2,1]]],
+      // Z
+      [[[0,0],[0,1],[1,1],[1,2]], [[0,1],[1,0],[1,1],[2,0]]],
+      // J
+      [[[0,0],[1,0],[1,1],[1,2]], [[0,1],[0,2],[1,1],[2,1]], [[1,0],[1,1],[1,2],[2,2]], [[0,1],[1,1],[2,0],[2,1]]],
+      // L
+      [[[0,2],[1,0],[1,1],[1,2]], [[0,1],[1,1],[2,1],[2,2]], [[1,0],[1,1],[1,2],[2,0]], [[0,0],[0,1],[1,1],[2,1]]]
+    ];
+
+    function randomShape() {
+      const type = Math.floor(Math.random() * SHAPES.length);
+      const color = COLORS[type];
+      const rotations = SHAPES[type];
+      return {
+        type, color, rotations,
+        rotation: 0,
+        row: 0,
+        col: Math.floor(COLS/2) - 2
+      };
+    }
+
+    function resetBoard() {
+      board = [];
+      for(let r=0; r<ROWS; r++) {
+        board[r] = [];
+        for(let c=0; c<COLS; c++) board[r][c] = null;
+      }
+    }
+
+    function drawBoard() {
+      const boardDiv = document.getElementById('board');
+      boardDiv.innerHTML = '';
+      // Cases vides
+      for(let r=0; r<ROWS; r++) {
+        for(let c=0; c<COLS; c++) {
+          let empty = document.createElement('div');
+          empty.className = 'empty';
+          empty.style.left = (c*10) + '%';
+          empty.style.top = (r*6.25) + '%';
+          boardDiv.appendChild(empty);
+        }
+      }
+      // Blocs posés
+      for(let r=0; r<ROWS; r++) {
+        for(let c=0; c<COLS; c++) {
+          if(board[r][c]) {
+            let block = document.createElement('div');
+            block.className = 'block';
+            block.style.left = (c*10) + '%';
+            block.style.top = (r*6.25) + '%';
+            block.style.background = board[r][c];
+            boardDiv.appendChild(block);
+          }
+        }
+      }
+      // Pièce courante
+      if(current) {
+        for(const [dr, dc] of current.rotations[current.rotation]) {
+          let r = current.row + dr, c = current.col + dc;
+          if(r >= 0) {
+            let block = document.createElement('div');
+            block.className = 'block';
+            block.style.left = (c*10) + '%';
+            block.style.top = (r*6.25) + '%';
+            block.style.background = current.color;
+            boardDiv.appendChild(block);
+          }
+        }
+      }
+    }
+
+    function valid(pos) {
+      for(const [dr, dc] of current.rotations[pos.rotation]) {
+        let r = pos.row + dr, c = pos.col + dc;
+        if(r < 0) continue;
+        if(r >= ROWS || c < 0 || c >= COLS || (board[r][c])) return false;
+      }
+      return true;
+    }
+
+    function merge() {
+      for(const [dr, dc] of current.rotations[current.rotation]) {
+        let r = current.row + dr, c = current.col + dc;
+        if(r >= 0) board[r][c] = current.color;
+      }
+    }
+
+    function removeLines() {
+      let lines = 0;
+      for(let r=ROWS-1; r>=0; r--) {
+        if(board[r].every(cell => cell)) {
+          lines++;
+          // Animation de ligne
+          for(let c=0; c<COLS; c++) {
+            let el = document.createElement('div');
+            el.className = 'block';
+            el.style.left = (c*10) + '%';
+            el.style.top = (r*6.25) + '%';
+            el.style.background = '#fff';
+            el.style.opacity = '0.8';
+            el.style.transition = 'opacity 0.3s';
+            document.getElementById('board').appendChild(el);
+            setTimeout(()=>{el.style.opacity='0';}, 60);
+          }
+          board.splice(r, 1);
+          board.unshift(Array(COLS).fill(null));
+          r++;
+        }
+      }
+      if(lines > 0) {
+        score += lines * 10;
+        document.getElementById('score').textContent = score;
+        document.getElementById('audio-line').currentTime = 0;
+        document.getElementById('audio-line').play();
+        if(window.navigator.vibrate) window.navigator.vibrate(80);
+      }
+    }
+
+    function drop() {
+      let pos = {...current, row: current.row + 1};
+      if(valid(pos)) {
+        current.row++;
+      } else {
+        merge();
+        removeLines();
+        spawn();
+        if(!valid(current)) {
+          endGame();
+        }
+      }
+      drawBoard();
+    }
+
+    function move(dir) {
+      let pos = {...current, col: current.col + dir};
+      if(valid(pos)) {
+        current.col += dir;
+        drawBoard();
+      }
+    }
+
+    function rotate() {
+      let pos = {...current, rotation: (current.rotation+1)%current.rotations.length};
+      if(valid(pos)) {
+        current.rotation = (current.rotation+1)%current.rotations.length;
+        drawBoard();
+        if(window.navigator.vibrate) window.navigator.vibrate(20);
+      }
+    }
+
+    function hardDrop() {
+      while(valid({...current, row: current.row + 1})) {
+        current.row++;
+      }
+      drawBoard();
+      drop();
+    }
+
+    function spawn() {
+      current = next || randomShape();
+      next = randomShape();
+      current.row = -1;
+      current.col = Math.floor(COLS/2) - 2;
+    }
+
+    function startGame() {
+      score = 0;
+      document.getElementById('score').textContent = score;
+      resetBoard();
+      spawn();
+      drawBoard();
+      gameOver = false;
+      document.getElementById('game-over').style.display = 'none';
+      interval = setInterval(drop, 600);
+    }
+
+    function endGame() {
+      clearInterval(interval);
+      gameOver = true;
+      document.getElementById('final-score').textContent = 'Score : ' + score;
+      document.getElementById('game-over').style.display = 'block';
+      document.getElementById('audio-gameover').currentTime = 0;
+      document.getElementById('audio-gameover').play();
+      if(window.navigator.vibrate) window.navigator.vibrate([100, 50, 100]);
+    }
+
+    // Contrôles clavier
+    document.addEventListener('keydown', e => {
+      if(gameOver) return;
+      if(['ArrowLeft','ArrowRight','ArrowDown','ArrowUp',' '].includes(e.key)) e.preventDefault();
+      switch (e.key) {
+        case 'ArrowLeft': move(-1); break;
+        case 'ArrowRight': move(1); break;
+        case 'ArrowUp': rotate(); break;
+        case 'ArrowDown': drop(); break;
+        case ' ': hardDrop(); break;
+      }
+    });
+
+    // Contrôles tactiles
+    document.getElementById('left').addEventListener('touchstart', e => { e.preventDefault(); move(-1); });
+    document.getElementById('right').addEventListener('touchstart', e => { e.preventDefault(); move(1); });
+    document.getElementById('rotate').addEventListener('touchstart', e => { e.preventDefault(); rotate(); });
+    document.getElementById('down').addEventListener('touchstart', e => { e.preventDefault(); drop(); });
+
+    // Contrôles boutons
+    document.getElementById('left').addEventListener('click', () => move(-1));
+    document.getElementById('right').addEventListener('click', () => move(1));
+    document.getElementById('rotate').addEventListener('click', () => rotate());
+    document.getElementById('down').addEventListener('click', () => drop());
+
+    // Restart
+    document.querySelector('.restart-btn').addEventListener('click', startGame);
+
+    // Lancement initial
+    startGame();
+
+    // Empêche le scroll sur mobile lors du jeu
+    document.body.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
+  </script>
+</body>
+</html>
