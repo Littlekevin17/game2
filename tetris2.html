@@ -60,13 +60,32 @@
       background: var(--primary);
       color: #fff;
     }
-    #score {
+    .infoscore {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 28px;
+      margin-bottom: 1.2rem;
+      width: 100%;
+    }
+    #score, #level {
       font-size: 2.2rem;
       color: #fff;
       font-weight: 700;
-      margin-bottom: 1.2rem;
       text-shadow: 0 2px 8px rgba(0,0,0,0.18);
       letter-spacing: 1px;
+      margin: 0;
+      padding: 0;
+      line-height: 1;
+    }
+    #level-label {
+      font-size: 1.1rem;
+      color: #fff;
+      font-weight: 400;
+      margin-top: 0.2rem;
+      display: block;
+      opacity: 0.7;
+      letter-spacing: 0.5px;
     }
     #board {
       background: var(--board-bg);
@@ -75,8 +94,8 @@
       position: relative;
       width: 90vw;
       max-width: 280px;
-      height: 56vw;
-      max-height: 448px;
+      aspect-ratio: 10 / 16;
+      height: auto;
       margin-bottom: 2vh;
       overflow: hidden;
       touch-action: none;
@@ -92,6 +111,8 @@
     .block {
       border: 2px solid #fff;
       box-shadow: var(--block-shadow);
+    }
+    .active-block {
       animation: popin 0.2s;
     }
     @keyframes popin {
@@ -176,8 +197,6 @@
       #board {
         width: 96vw;
         max-width: 96vw;
-        height: 64vw;
-        max-height: 64vw;
       }
       .controls {
         gap: 10px;
@@ -192,6 +211,9 @@
         padding: 18px 10px;
         font-size: 1rem;
       }
+      .infoscore {
+        gap: 12px;
+      }
     }
   </style>
 </head>
@@ -200,7 +222,16 @@
     <div class="top-bar">
       <a href="index.html" class="back-link"><i class="fa fa-arrow-left"></i> Accueil</a>
     </div>
-    <div id="score">0</div>
+    <div class="infoscore">
+      <div>
+        <div id="score">0</div>
+        <span id="level-label">Score</span>
+      </div>
+      <div>
+        <div id="level">1</div>
+        <span id="level-label">Niveau</span>
+      </div>
+    </div>
     <div id="board"></div>
     <div class="controls">
       <button class="ctrl-btn" id="left" aria-label="Gauche"><i class="fa fa-arrow-left"></i></button>
@@ -214,17 +245,18 @@
       <button class="restart-btn">Rejouer</button>
     </div>
   </div>
-  <!-- Sons libres de droits (https://freesound.org/) -->
+  <!-- Sons -->
   <audio id="audio-line" src="https://cdn.pixabay.com/audio/2022/07/26/audio_124bfa1f4d.mp3"></audio>
-  <audio id="audio-gameover" src="https://cdn.pixabay.com/audio/2022/07/26/audio_124bfa1f4d.mp3"></audio>
+  <audio id="audio-gameover" src="sounds/game-over.wav"></audio>
   <script>
     // Palette de couleurs pour les blocs
     const COLORS = [
       "#4f8cff", "#ffb347", "#34d399", "#f87171", "#a78bfa", "#facc15", "#fb7185"
     ];
-    const ROWS = 16, COLS = 10, BLOCK_SIZE = 28; // px pour calculs JS
+    const ROWS = 16, COLS = 10;
     let board = [];
     let current, next, interval, score = 0, gameOver = false;
+    let linesCleared = 0, level = 1, speed = 600;
 
     // Définition des formes et rotations
     const SHAPES = [
@@ -290,13 +322,13 @@
           }
         }
       }
-      // Pièce courante
+      // Pièce courante (avec animation)
       if(current) {
         for(const [dr, dc] of current.rotations[current.rotation]) {
           let r = current.row + dr, c = current.col + dc;
           if(r >= 0) {
             let block = document.createElement('div');
-            block.className = 'block';
+            block.className = 'block active-block'; // Animation seulement pour la pièce active
             block.style.left = (c*10) + '%';
             block.style.top = (r*6.25) + '%';
             block.style.background = current.color;
@@ -345,12 +377,34 @@
         }
       }
       if(lines > 0) {
-        score += lines * 10;
+        linesCleared += lines;
+        let oldLevel = level;
+        level = Math.floor(linesCleared / 10) + 1;
+        let points = 0;
+        switch (lines) {
+          case 1: points = 40 * level; break;
+          case 2: points = 100 * level; break;
+          case 3: points = 300 * level; break;
+          case 4: points = 1200 * level; break;
+        }
+        score += points;
         document.getElementById('score').textContent = score;
+        document.getElementById('level').textContent = level;
         document.getElementById('audio-line').currentTime = 0;
         document.getElementById('audio-line').play();
         if(window.navigator.vibrate) window.navigator.vibrate(80);
+        // Vitesse augmente à chaque niveau
+        if(level !== oldLevel) {
+          updateSpeed();
+        }
       }
+    }
+
+    function updateSpeed() {
+      // Vitesse inspirée du Tetris NES, mais adaptée pour le fun
+      speed = Math.max(100, 600 - (level-1)*50);
+      clearInterval(interval);
+      interval = setInterval(drop, speed);
     }
 
     function drop() {
@@ -402,19 +456,24 @@
 
     function startGame() {
       score = 0;
+      linesCleared = 0;
+      level = 1;
+      speed = 600;
       document.getElementById('score').textContent = score;
+      document.getElementById('level').textContent = level;
       resetBoard();
       spawn();
       drawBoard();
       gameOver = false;
       document.getElementById('game-over').style.display = 'none';
-      interval = setInterval(drop, 600);
+      clearInterval(interval);
+      interval = setInterval(drop, speed);
     }
 
     function endGame() {
       clearInterval(interval);
       gameOver = true;
-      document.getElementById('final-score').textContent = 'Score : ' + score;
+      document.getElementById('final-score').textContent = 'Score : ' + score + ' | Niveau : ' + level;
       document.getElementById('game-over').style.display = 'block';
       document.getElementById('audio-gameover').currentTime = 0;
       document.getElementById('audio-gameover').play();
