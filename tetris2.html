@@ -77,18 +77,13 @@
       color: #fff;
     }
     #board {
-      aspect-ratio: 10 / 16;
-      width: 96vw;
-      max-width: 320px;
-      height: auto;
-      max-height: 60vh;
       background: var(--board-bg);
       border-radius: var(--radius);
       box-shadow: 0 6px 32px rgba(33,147,176,0.18);
       position: relative;
       margin-bottom: 1.2vh;
       overflow: hidden;
-      touch-action: none;
+      /* width/height gérés par JS */
     }
     .block, .empty {
       position: absolute;
@@ -188,9 +183,7 @@
         font-size: 1.1rem;
       }
       #board {
-        width: 98vw;
-        max-width: 98vw;
-        max-height: 56vh;
+        /* width/height gérés par JS */
       }
       .controls {
         gap: 7px;
@@ -232,7 +225,21 @@
   <audio id="audio-line" src="sounds/line-success.wav"></audio>
   <audio id="audio-gameover" src="sounds/game-over.wav"></audio>
   <script>
-    // Palette de couleurs pour les blocs
+    // --- Plateau toujours bien proportionné ---
+    function resizeBoard() {
+      const board = document.getElementById('board');
+      let width = Math.min(window.innerWidth * 0.9, 340);
+      let height = width * 1.6;
+      // Ne jamais dépasser 60% de la hauteur de l'écran
+      height = Math.min(height, window.innerHeight * 0.6);
+      // Si la hauteur est limitée, recalcule la largeur pour garder le ratio
+      width = Math.min(width, height / 1.6);
+      board.style.width = width + "px";
+      board.style.height = height + "px";
+    }
+    window.addEventListener('resize', resizeBoard);
+
+    // --- Tetris logique ---
     const COLORS = [
       "#4f8cff", "#ffb347", "#34d399", "#f87171", "#a78bfa", "#facc15", "#fb7185"
     ];
@@ -241,7 +248,6 @@
     let current, next, interval, score = 0, gameOver = false;
     let linesCleared = 0, level = 1, speed = 600;
 
-    // Définition des formes et rotations
     const SHAPES = [
       // I
       [[[0,0],[0,1],[0,2],[0,3]], [[0,1],[1,1],[2,1],[3,1]]],
@@ -311,7 +317,7 @@
           let r = current.row + dr, c = current.col + dc;
           if(r >= 0) {
             let block = document.createElement('div');
-            block.className = 'block active-block'; // Animation seulement pour la pièce active
+            block.className = 'block active-block';
             block.style.left = (c*10) + '%';
             block.style.top = (r*6.25) + '%';
             block.style.background = current.color;
@@ -376,7 +382,6 @@
         document.getElementById('audio-line').currentTime = 0;
         document.getElementById('audio-line').play();
         if(window.navigator.vibrate) window.navigator.vibrate(80);
-        // Vitesse augmente à chaque niveau
         if(level !== oldLevel) {
           updateSpeed();
         }
@@ -384,7 +389,6 @@
     }
 
     function updateSpeed() {
-      // Vitesse inspirée du Tetris NES, mais adaptée pour le fun
       speed = Math.max(100, 600 - (level-1)*50);
       clearInterval(interval);
       interval = setInterval(drop, speed);
@@ -451,6 +455,7 @@
       document.getElementById('game-over').style.display = 'none';
       clearInterval(interval);
       interval = setInterval(drop, speed);
+      resizeBoard();
     }
 
     function endGame() {
@@ -488,51 +493,51 @@
     document.getElementById('rotate').addEventListener('click', () => rotate());
     document.getElementById('down').addEventListener('click', () => drop());
 
-    // Contrôles tactiles drag sur le plateau
-    let dragStartX = null, dragStartY = null, dragMoved = false;
+    // Contrôles tactiles drag fiable
+    let dragStartX = null, dragStartY = null, dragAction = false;
 
     document.getElementById('board').addEventListener('touchstart', function(e) {
       if(gameOver) return;
       const t = e.touches[0];
       dragStartX = t.clientX;
       dragStartY = t.clientY;
-      dragMoved = false;
+      dragAction = false;
     }, {passive: false});
 
     document.getElementById('board').addEventListener('touchmove', function(e) {
-      if(gameOver || dragStartX === null) return;
+      if(gameOver || dragStartX === null || dragAction) return;
       const t = e.touches[0];
       const dx = t.clientX - dragStartX;
       const dy = t.clientY - dragStartY;
-      if(Math.abs(dx) > 20 && Math.abs(dx) > Math.abs(dy)) {
+      if(Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
         if(dx > 0) move(1);
         else move(-1);
-        dragStartX = t.clientX;
-        dragMoved = true;
-      }
-      if(Math.abs(dy) > 28 && Math.abs(dy) > Math.abs(dx)) {
-        drop();
-        dragStartY = t.clientY;
-        dragMoved = true;
+        dragAction = true;
+      } else if(Math.abs(dy) > 50 && Math.abs(dy) > Math.abs(dx)) {
+        hardDrop();
+        dragAction = true;
       }
       e.preventDefault();
     }, {passive: false});
 
     document.getElementById('board').addEventListener('touchend', function(e) {
       if(gameOver) return;
-      if(!dragMoved) {
+      if(!dragAction) {
         rotate();
       }
       dragStartX = null;
       dragStartY = null;
-      dragMoved = false;
+      dragAction = false;
     }, {passive: false});
 
     // Restart
     document.querySelector('.restart-btn').addEventListener('click', startGame);
 
     // Lancement initial
-    startGame();
+    window.addEventListener('DOMContentLoaded', () => {
+      resizeBoard();
+      startGame();
+    });
 
     // Empêche le scroll sur mobile lors du jeu
     document.body.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });

@@ -130,6 +130,63 @@ body {
   height: 8px;
   margin: 3px;
 }
+/* Bouton retour à l'accueil */
+.home-btn-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: 40px;
+}
+.home-btn {
+  display: inline-block;
+  padding: 14px 38px;
+  background: #303a21;
+  color: #fff;
+  font-family: "Clear Sans", "Helvetica Neue", Arial, sans-serif;
+  font-size: 1.1em;
+  border-radius: 28px;
+  text-decoration: none;
+  box-shadow: 0 2px 8px #2223;
+  transition: background 0.2s;
+  border: none;
+  cursor: pointer;
+}
+.home-btn:hover {
+  background: #415c2e;
+  color: #fff;
+}
+@media (max-width: 500px) {
+  #outer-board {
+    width: 98vw;
+    min-width: unset;
+    max-width: 99vw;
+  }
+  #board {
+    width: 70vw;
+    min-width: 210px;
+    max-width: 98vw;
+    height: 56vw;
+    min-height: 210px;
+    max-height: 98vw;
+  }
+  #stats {
+    width: 18vw;
+    min-width: 60px;
+    max-width: 98vw;
+    height: 56vw;
+    min-height: 210px;
+    max-height: 98vw;
+  }
+  .home-btn-container {
+    margin-top: 24px;
+  }
+  .home-btn {
+    padding: 12px 0;
+    width: 90vw;
+    max-width: 340px;
+    font-size: 1em;
+  }
+}
   </style>
 </head>
 <body>
@@ -151,6 +208,10 @@ body {
       <button class="btn btn-rounded" id="down"><i class="fa fa-arrow-down"></i></button>
     </div>
     <div style="clear: both;"></div>
+  </div>
+  <!-- Bouton retour à l'accueil -->
+  <div class="home-btn-container">
+    <a href="index.html" class="home-btn"><i class="fa fa-home"></i> Retour à l'accueil</a>
   </div>
   <script>
     // Génération dynamique des cases vides du plateau (16 lignes x 10 colonnes)
