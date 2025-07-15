@@ -1,106 +1,91 @@
 <!DOCTYPE html><html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Crimson Sigil - Prototype</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Crimson Sigil - Mobile Tactical Prototype</title>
   <style>
-    body {
-      background: #1e1e1e;
-      color: #fff;
-      font-family: Arial;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: #121212;
+      font-family: sans-serif;
+      overflow: hidden;
+    }
+    #viewport {
+      width: 100vw;
+      height: 100vh;
+      overflow: scroll;
+      touch-action: none;
     }
     #gameBoard {
       display: grid;
-      grid-template-columns: repeat(8, 50px);
-      grid-template-rows: repeat(8, 50px);
-      gap: 1px;
-      margin-top: 20px;
+      grid-template-columns: repeat(30, 64px);
+      grid-template-rows: repeat(20, 64px);
+      width: 1920px;
+      height: 1280px;
+      background: #202020;
+      touch-action: none;
     }
     .tile {
-      width: 50px;
-      height: 50px;
-      background-color: #333;
+      width: 64px;
+      height: 64px;
+      background: #333;
+      border: 1px solid #222;
       display: flex;
       align-items: center;
       justify-content: center;
     }
     .player {
-      background-color: dodgerblue;
-      width: 100%;
-      height: 100%;
-    }
-    .enemy {
-      background-color: crimson;
-      width: 100%;
-      height: 100%;
+      width: 50px;
+      height: 50px;
+      background: dodgerblue;
+      border-radius: 8px;
     }
   </style>
 </head>
 <body>
-  <h1>Crimson Sigil - Prototype</h1>
-  <div id="gameBoard"></div>  <script>
-    const boardSize = 8;
-    const gameBoard = document.getElementById('gameBoard');
+  <div id="viewport">
+    <div id="gameBoard"></div>
+  </div>  <script>
+    const cols = 30;
+    const rows = 20;
+    const gameBoard = document.getElementById("gameBoard");
 
-    let player = { x: 0, y: 0 };
-    let enemy = { x: 6, y: 6 };
+    let player = { x: 2, y: 2 };
+    let selected = false;
 
     function drawBoard() {
-      gameBoard.innerHTML = '';
-      for (let y = 0; y < boardSize; y++) {
-        for (let x = 0; x < boardSize; x++) {
-          const tile = document.createElement('div');
-          tile.classList.add('tile');
+      gameBoard.innerHTML = "";
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          const tile = document.createElement("div");
+          tile.classList.add("tile");
+          tile.dataset.x = x;
+          tile.dataset.y = y;
+
           if (player.x === x && player.y === y) {
-            const p = document.createElement('div');
-            p.classList.add('player');
+            const p = document.createElement("div");
+            p.classList.add("player");
             tile.appendChild(p);
-          } else if (enemy.x === x && enemy.y === y) {
-            const e = document.createElement('div');
-            e.classList.add('enemy');
-            tile.appendChild(e);
           }
+
+          tile.addEventListener("click", () => {
+            if (selected) {
+              player.x = x;
+              player.y = y;
+              selected = false;
+              drawBoard();
+            } else if (player.x === x && player.y === y) {
+              selected = true;
+              tile.style.backgroundColor = "#555";
+            }
+          });
+
           gameBoard.appendChild(tile);
         }
       }
     }
-
-    function movePlayer(dx, dy) {
-      const newX = player.x + dx;
-      const newY = player.y + dy;
-      if (newX >= 0 && newX < boardSize && newY >= 0 && newY < boardSize) {
-        player.x = newX;
-        player.y = newY;
-        drawBoard();
-        setTimeout(enemyTurn, 500);
-      }
-    }
-
-    function enemyTurn() {
-      const dx = Math.sign(player.x - enemy.x);
-      const dy = Math.sign(player.y - enemy.y);
-      enemy.x += dx;
-      enemy.y += dy;
-      drawBoard();
-
-      if (enemy.x === player.x && enemy.y === player.y) {
-        alert("L'ennemi vous a vaincu !");
-        player = { x: 0, y: 0 };
-        enemy = { x: 6, y: 6 };
-        drawBoard();
-      }
-    }
-
-    document.addEventListener('keydown', (e) => {
-      switch (e.key) {
-        case 'ArrowUp': movePlayer(0, -1); break;
-        case 'ArrowDown': movePlayer(0, 1); break;
-        case 'ArrowLeft': movePlayer(-1, 0); break;
-        case 'ArrowRight': movePlayer(1, 0); break;
-      }
-    });
 
     drawBoard();
   </script></body>
