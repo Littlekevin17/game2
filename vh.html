@@ -1,0 +1,107 @@
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Crimson Sigil - Prototype</title>
+  <style>
+    body {
+      background: #1e1e1e;
+      color: #fff;
+      font-family: Arial;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    #gameBoard {
+      display: grid;
+      grid-template-columns: repeat(8, 50px);
+      grid-template-rows: repeat(8, 50px);
+      gap: 1px;
+      margin-top: 20px;
+    }
+    .tile {
+      width: 50px;
+      height: 50px;
+      background-color: #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .player {
+      background-color: dodgerblue;
+      width: 100%;
+      height: 100%;
+    }
+    .enemy {
+      background-color: crimson;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <h1>Crimson Sigil - Prototype</h1>
+  <div id="gameBoard"></div>  <script>
+    const boardSize = 8;
+    const gameBoard = document.getElementById('gameBoard');
+
+    let player = { x: 0, y: 0 };
+    let enemy = { x: 6, y: 6 };
+
+    function drawBoard() {
+      gameBoard.innerHTML = '';
+      for (let y = 0; y < boardSize; y++) {
+        for (let x = 0; x < boardSize; x++) {
+          const tile = document.createElement('div');
+          tile.classList.add('tile');
+          if (player.x === x && player.y === y) {
+            const p = document.createElement('div');
+            p.classList.add('player');
+            tile.appendChild(p);
+          } else if (enemy.x === x && enemy.y === y) {
+            const e = document.createElement('div');
+            e.classList.add('enemy');
+            tile.appendChild(e);
+          }
+          gameBoard.appendChild(tile);
+        }
+      }
+    }
+
+    function movePlayer(dx, dy) {
+      const newX = player.x + dx;
+      const newY = player.y + dy;
+      if (newX >= 0 && newX < boardSize && newY >= 0 && newY < boardSize) {
+        player.x = newX;
+        player.y = newY;
+        drawBoard();
+        setTimeout(enemyTurn, 500);
+      }
+    }
+
+    function enemyTurn() {
+      const dx = Math.sign(player.x - enemy.x);
+      const dy = Math.sign(player.y - enemy.y);
+      enemy.x += dx;
+      enemy.y += dy;
+      drawBoard();
+
+      if (enemy.x === player.x && enemy.y === player.y) {
+        alert("L'ennemi vous a vaincu !");
+        player = { x: 0, y: 0 };
+        enemy = { x: 6, y: 6 };
+        drawBoard();
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      switch (e.key) {
+        case 'ArrowUp': movePlayer(0, -1); break;
+        case 'ArrowDown': movePlayer(0, 1); break;
+        case 'ArrowLeft': movePlayer(-1, 0); break;
+        case 'ArrowRight': movePlayer(1, 0); break;
+      }
+    });
+
+    drawBoard();
+  </script></body>
+</html>
