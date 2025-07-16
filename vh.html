@@ -2,45 +2,49 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Crimson Sigil - Mobile Tactical Prototype</title>
+  <title>Crimson Sigil - Isometric Prototype</title>
   <style>
     html, body {
       margin: 0;
       padding: 0;
-      height: 100%;
-      background: #121212;
-      font-family: sans-serif;
+      background: #111;
       overflow: hidden;
     }
     #viewport {
       width: 100vw;
       height: 100vh;
-      overflow: scroll;
-      touch-action: none;
+      overflow: auto;
+      position: relative;
     }
     #gameBoard {
-      display: grid;
-      grid-template-columns: repeat(30, 64px);
-      grid-template-rows: repeat(20, 64px);
-      width: 1920px;
-      height: 1280px;
-      background: #202020;
-      touch-action: none;
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 1000px;
+      height: 1000px;
     }
     .tile {
+      position: absolute;
       width: 64px;
-      height: 64px;
-      background: #333;
-      border: 1px solid #222;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      height: 32px;
+      background: #444;
+      transform: skewY(-26.565deg) rotate(45deg);
+      transform-origin: center;
+      z-index: 0;
     }
     .player {
-      width: 50px;
-      height: 50px;
+      position: absolute;
+      width: 40px;
+      height: 40px;
       background: dodgerblue;
-      border-radius: 8px;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+    }
+    .tile.elevated {
+      background: #666;
+      box-shadow: 0 20px 0 #333 inset;
     }
   </style>
 </head>
@@ -48,43 +52,61 @@
   <div id="viewport">
     <div id="gameBoard"></div>
   </div>  <script>
-    const cols = 30;
-    const rows = 20;
-    const gameBoard = document.getElementById("gameBoard");
+    const board = document.getElementById("gameBoard");
+    const width = 10;
+    const height = 10;
+    const tileW = 64;
+    const tileH = 32;
 
-    let player = { x: 2, y: 2 };
-    let selected = false;
+    let player = { x: 2, y: 2, h: 0 };
+
+    const map = [];
+    for (let y = 0; y < height; y++) {
+      const row = [];
+      for (let x = 0; x < width; x++) {
+        row.push(Math.floor(Math.random() * 3)); // hauteur aléatoire
+      }
+      map.push(row);
+    }
 
     function drawBoard() {
-      gameBoard.innerHTML = "";
-      for (let y = 0; y < rows; y++) {
-        for (let x = 0; x < cols; x++) {
+      board.innerHTML = "";
+
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
           const tile = document.createElement("div");
           tile.classList.add("tile");
+          const elevation = map[y][x];
+          if (elevation > 0) tile.classList.add("elevated");
+
+          const isoX = (x - y) * (tileW / 2);
+          const isoY = (x + y) * (tileH / 2) - elevation * 10;
+
+          tile.style.left = `${500 + isoX}px`;
+          tile.style.top = `${500 + isoY}px`;
           tile.dataset.x = x;
           tile.dataset.y = y;
 
-          if (player.x === x && player.y === y) {
-            const p = document.createElement("div");
-            p.classList.add("player");
-            tile.appendChild(p);
-          }
-
           tile.addEventListener("click", () => {
-            if (selected) {
+            if (Math.abs(player.x - x) <= 1 && Math.abs(player.y - y) <= 1) {
               player.x = x;
               player.y = y;
-              selected = false;
+              player.h = elevation;
               drawBoard();
-            } else if (player.x === x && player.y === y) {
-              selected = true;
-              tile.style.backgroundColor = "#555";
             }
           });
 
-          gameBoard.appendChild(tile);
+          board.appendChild(tile);
         }
       }
+
+      const p = document.createElement("div");
+      p.classList.add("player");
+      const isoX = (player.x - player.y) * (tileW / 2);
+      const isoY = (player.x + player.y) * (tileH / 2) - player.h * 10;
+      p.style.left = `${500 + isoX}px`;
+      p.style.top = `${500 + isoY - 16}px`;
+      board.appendChild(p);
     }
 
     drawBoard();
