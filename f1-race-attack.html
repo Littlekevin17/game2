@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>F1 Race Attack</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0; padding: 0; min-height: 100vh;
+      background: linear-gradient(135deg,#191b22 60%,#23272f 100%);
+      font-family: 'Orbitron', Arial, sans-serif; color: #fff;
+    }
+    .container {
+      max-width: 520px; margin: 0 auto; padding: 12px 6px 24px 6px;
+    }
+    h1 {
+      text-align: center; color: #ffeb3b; font-size: 2.1em; margin-bottom: 8px;
+      letter-spacing: 2px; text-shadow: 0 2px 16px #000;
+    }
+    .board {
+      display: flex; flex-wrap: wrap; justify-content: center;
+      margin: 18px 0 8px 0; background: #101117; border-radius: 24px;
+      box-shadow: 0 6px 32px #000a, 0 1px 0 #fff2;
+      padding: 18px 6px 10px 6px; min-height: 120px; position: relative;
+    }
+    .cell {
+      width: 32px; height: 32px;
+      background: linear-gradient(145deg,#23272f 70%,#181a20 100%);
+      border-radius: 10px; margin: 2px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      font-size: 10px; position: relative;
+      box-shadow: 0 2px 10px #0006, 0 1px 0 #fff2; border: 1.5px solid #35393f;
+      transition: box-shadow 0.2s;
+    }
+    .cell.normale { background: #2c2c2c; }
+    .cell.ligne-droite { background: #388e3c; }
+    .cell.virage-simple { background: #ffa726; }
+    .cell.virage-serre { background: #e53935; }
+    .cell.pitstop { background: #1976d2; }
+    .cell.start {
+      border: 2.5px solid #43a047;
+      background: linear-gradient(135deg,#43a047 60%,#23272f 100%);
+      color: #fff; font-weight: bold; box-shadow: 0 0 16px #43a04755, 0 2px 10px #0004;
+    }
+    .cell.finish {
+      border: 2.5px solid #ffd600;
+      background: linear-gradient(135deg,#ffd600 60%,#23272f 100%);
+      color: #23272f; font-weight: bold;
+      box-shadow: 0 0 16px #ffd60055, 0 2px 10px #0004;
+    }
+    .car {
+      width: 80%; max-width: 34px; min-width:16px;
+      height: auto; position: absolute; top: 3px; left: 50%; transform: translateX(-50%);
+      z-index: 2; object-fit: contain; filter: drop-shadow(0 0 3px #23272f40);
+      transition: filter 0.15s;
+      pointer-events: none; /* pour éviter de bloquer les clics sur mobile */
+    }
+    @media (max-width:600px) {
+      .cell { width: 12vw; min-width:22px; height: 12vw; min-height:22px; }
+      .car { width: 85%; max-width: 54px; min-width:18px; top: 2px;}
+    }
+    .players {
+      display: flex; justify-content: space-around; margin: 10px 0 7px 0;
+      flex-wrap: wrap; gap: 5px;
+    }
+    .player {
+      border: 2.5px solid #fff; border-radius: 12px; padding: 7px 12px;
+      background: linear-gradient(135deg,#23272f 60%,#181a20 100%);
+      font-size: 1em; min-width: 92px; text-align: center; margin: 0 2px;
+      box-shadow: 0 2px 10px #0004; transition: border-color 0.2s, background 0.2s;
+    }
+    .player.active {
+      border-color: #ffeb3b; background: linear-gradient(135deg,#2e3039 60%,#23272f 100%);
+      box-shadow: 0 0 16px #ffeb3b33, 0 2px 10px #0004;
+    }
+    .player .label { font-size: 0.92em; color: #ffeb3b; letter-spacing: 1px; font-weight: bold; }
+    .player .stats {
+      font-size: 0.95em; display: flex; justify-content: center; gap: 7px; margin-top: 3px;
+    }
+    .stat { background: #23272f; border-radius: 7px; padding: 2px 7px; color: #fff; font-weight: 700;
+      box-shadow: 0 1px 3px #0003; display: flex; align-items: center; gap: 3px;
+    }
+    .stat.boost { color: #e53935;}
+    .stat.pneus { color: #43a047;}
+    .actions {
+      display: flex; justify-content: center; gap: 10px; margin: 14px 0 2px 0;
+    }
+    button {
+      background: radial-gradient(circle at 60% 40%,#ffeb3b 85%,#e53935 100%);
+      color: #23272f; border: none; border-radius: 50%; width: 54px; height: 54px;
+      font-size: 1.5em; font-weight: bold; box-shadow: 0 4px 18px #0007, 0 1px 0 #fff2;
+      cursor: pointer; transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+      outline: none; margin-bottom: 2px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    button:active { transform: scale(0.94);}
+    button:disabled { background: #bdbdbd; color: #757575; box-shadow: none; cursor: not-allowed;}
+    .event, .msg {
+      text-align: center; margin: 8px 0 4px 0; font-size: 1.25em; letter-spacing: 1px; min-height: 28px;
+    }
+    .event { color: #ffeb3b; }
+    .msg { color: #e53935; font-weight: bold;}
+    .history {
+      background: linear-gradient(135deg,#23272f 60%,#181a20 100%);
+      border-radius: 12px; padding: 10px 8px 6px 14px; margin-top: 13px;
+      font-size: 1em; box-shadow: 0 2px 10px #0003; min-height: 40px;
+    }
+    .history b { color: #ffeb3b; }
+    .history ul { padding-left: 13px; margin: 0;}
+    .history li { margin-bottom: 3px;}
+    .newrace {
+      display: flex; justify-content: center; margin-bottom: 10px;
+    }
+    .newrace button {
+      width: 90vw; max-width: 400px; min-width: 120px; height: 46px; border-radius: 22px; font-size: 1.1em;
+      background: linear-gradient(90deg,#ffd600 60%,#e53935 100%);
+      color: #23272f; box-shadow: 0 2px 8px #0004; margin: 0; border: none;
+      font-family: 'Orbitron', Arial, sans-serif; font-weight: bold; letter-spacing: 1px; margin-bottom: 10px;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .newrace button:active { transform: scale(0.97);}
+    /* Popups */
+    .popup-turn, .popup-card {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 200;
+    }
+    .turn-content, .card-content {
+      background: #fff; color: #23272f; border-radius: 18px; padding: 32px 22px 24px 22px;
+      box-shadow: 0 8px 32px #000a; text-align: center; max-width: 340px;
+      animation: pop 0.2s;
+    }
+    .turn-content h2 { color: #2196f3; margin-bottom: 10px;}
+    .card-content h2 { color: #e53935; margin-bottom: 10px;}
+    .card-content.pitstop h2 { color: #1976d2;}
+    .card-content p { font-size: 1.15em; margin-bottom: 18px;}
+    .continue-btn {
+      background: linear-gradient(90deg,#ffd600 60%,#e53935 100%);
+      color: #23272f; border: none; border-radius: 16px;
+      font-size: 1.15em; padding: 12px 0; width: 100%; 
+      font-family: 'Orbitron', Arial, sans-serif; font-weight: bold; cursor: pointer; margin-top: 12px;
+      text-align: center; display: block;
+    }
+    .dice-touchable {
+      display: flex; gap: 8px; justify-content: center; margin:22px 0; cursor: pointer;
+    }
+    .dice-touchable .die {
+      width:52px; height: 52px; display: flex; align-items: center; justify-content: center;
+      border-radius: 12px; font-size: 2em; box-shadow: 0 2px 8px #0005;
+      border: 2px solid #fff9; transition: transform 0.08s;
+      background-position:center; background-repeat:no-repeat; background-size:contain;
+      background-color: #eee;
+      position: relative;
+    }
+    .dice-touchable .move-die {
+      background: #2196f3 url('img/f1-1-droite.png') center center/75% no-repeat;
+    }
+    .dice-touchable .action-die {
+      background: #e53935 url('img/f1-2-droite.png') center center/75% no-repeat;
+    }
+    .dice-touchable .die:active { transform: scale(0.96);}
+    .dice-row-popup { display: flex; gap: 22px; justify-content: center; margin-top: 20px; margin-bottom: 6px;}
+    .die.move-die { background: #2196f3; color: #fff; border: 2px solid #1976d2;}
+    .die.action-die { background: #e53935; color: #fff; border: 2px solid #b71c1c;}
+    .dice-labels-popup { display: flex; gap: 46px; justify-content: center; font-size: 0.93em; color: #ffeb3b; margin-bottom: 8px;}
+    .turn-content .continue-btn, .card-content button {
+      background: linear-gradient(90deg,#ffd600 60%,#e53935 100%);
+      color: #23272f; border: none; border-radius: 16px; font-size: 1.15em; padding: 12px 0; width: 100%;
+      font-family: 'Orbitron', Arial, sans-serif; font-weight: bold; cursor: pointer; margin-top: 12px; text-align: center; display: block;
+    }
+    @media (max-width: 600px) {
+      .container { padding: 2px 0 16px 0;}
+      .cell { width: 12vw; min-width:22px; height: 12vw; min-height:22px; font-size: 9px;}
+      .car { width: 85%; max-width: 52px; min-width:16px; }
+      .player { min-width: 60px; font-size: 0.82em; padding: 4px 5px;}
+      button { width: 38px; height: 38px; font-size: 1.1em;}
+      .board { padding: 7px 2px 5px 2px;}
+      .newrace button { width: 98vw; max-width: 99vw; font-size: 1em; height: 38px;}
+      .turn-content, .card-content { padding: 18px 5vw 12px 5vw; }
+      .die { width: 34px; height: 34px; font-size: 1.11em;}
+      .dice-touchable .die { width: 36px; height: 36px; font-size: 1.25em;}
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>F1 Race Attack 🏁</h1>
+  <div class="newrace">
+    <button onclick="generateBoard()">Lancer une nouvelle course</button>
+  </div>
+  <div id="board" class="board"></div>
+  <div class="players" id="players"></div>
+  <div class="actions">
+    <button id="roll" onclick="startTurn()" title="C'est à votre tour !">🎲</button>
+    <button onclick="resetGame()" title="Recommencer la partie">⟲</button>
+  </div>
+  <div class="event" id="event"></div>
+  <div class="msg" id="msg"></div>
+  <div class="history">
+    <b>Historique</b>
+    <ul id="history"></ul>
+  </div>
+</div>
+<!-- Popup début de tour et dés -->
+<div id="popup-turn" class="popup-turn">
+  <div class="turn-content" id="popup-turn-content">
+    <h2>À toi de jouer !</h2>
+    <p id="turn-player-text"></p>
+    <div class="dice-touchable" id="dice-touchable" onclick="launchDiceFromPopup()">
+        <div class="die move-die"></div>
+        <div class="die action-die"></div>
+    </div>
+    <div id="popup-dice-result" style="display:none;">
+        <div class="dice-row-popup">
+            <div class="die move-die" id="popup-move-die"></div>
+            <div class="die action-die" id="popup-action-die"></div>
+        </div>
+        <div class="dice-labels-popup">
+            <span>Dé Mouvement</span>
+            <span>Dé Action</span>
+        </div>
+        <button class="continue-btn" onclick="closeTurnPopupAndPlay()">Continuer</button>
+    </div>
+  </div>
+</div>
+<!-- Popup carte -->
+<div id="popup-card" class="popup-card">
+  <div class="card-content" id="card-content">
+    <h2 id="card-title">Carte</h2>
+    <p id="card-text">Texte de la carte...</p>
+    <button onclick="closeCard()">OK</button>
+  </div>
+</div>
+<script>
+const boardLength = 50;
+const minSpecial = 5;
+const initialPlayers = [
+  { name: "Pilote 1", pos: 0, boost: 3, pneus: 5, color: "#e53935", imageUrl: "img/f1-1-droite.png" },
+  { name: "Pilote 2", pos: 0, boost: 3, pneus: 5, color: "#3949ab", imageUrl: "img/f1-2-droite.png" }
+];
+const evenements = [
+  "Dépassement audacieux : avancez d'une case", "Pluie soudaine : tous perdent 1 pneu",
+  "Problème moteur : reculez de 2 cases", "Fan en délire : avancez de 2 cases",
+  "Tête-à-queue : passez votre prochain tour", "Débris sur la piste : un joueur recule d'une case",
+  "Arrêt rapide : +1 pneu et +1 boost", "Aspiration : avancez sur la case du joueur devant vous",
+  "Pneus usés : perdez 2 pneus", "Tour le plus rapide : avancez de 3 cases"
+];
+const pitstops = [
+  "Changement de pneus éclair : +3 pneus et avancez d'une case",
+  "Réglages optimisés : prochain tour, relancez un dé une fois",
+  "Ravitaillement stratégique : +2 pneus ou +1 boost",
+  "Mécano expert : réparez tous vos dégâts, +2 boost",
+  "Arrêt prolongé : perdez un tour, +2 pneus et +1 boost",
+  "Ajustement aérodynamique : prochaine ligne droite, +2 cases",
+  "Changement de pilote : échangez la position de deux voitures",
+  "Inspection rapide : regardez les 3 prochaines cartes événement",
+  "Boost de motivation : prochain boost = +4 cases",
+  "Arrêt éclair : rejouez un tour complet"
+];
+const specialTypes = ["ligne-droite", "virage-simple", "virage-serre", "pitstop"];
+let board, players, current, dice, gameOver, history, skipTurn;
+let cardToShow = null, cardType = null, continueAfterCard = null;
+
+function shuffle(array) {
+  for(let i=array.length-1; i>0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+}
+function generateBoard() {
+  let specials = [];
+  for(let type of specialTypes) for(let i=0;i<minSpecial;i++) specials.push(type);
+  let remaining = boardLength - 2 - specials.length;
+  for(let i=0;i<remaining;i++) {
+    let t = Math.random()<0.55 ? "normale" : specialTypes[Math.floor(Math.random()*specialTypes.length)];
+    specials.push(t);
+  }
+  shuffle(specials);
+  board = [];
+  for(let i=0;i<boardLength;i++) {
+    if(i===0) board.push({type:"start"});
+    else if(i===boardLength-1) board.push({type:"finish"});
+    else board.push({type:specials[i-1]});
+  }
+  resetGame(true);
+}
+function resetGame(keepBoard) {
+  players = JSON.parse(JSON.stringify(initialPlayers));
+  current = 0;
+  dice = [null, null];
+  gameOver = false;
+  history = [];
+  skipTurn = players.map(()=>false);
+  cardToShow = null; cardType = null; continueAfterCard = null;
+  hidePopup('popup-turn'); hidePopup('popup-card');
+  update();
+}
+function startTurn() {
+  if (gameOver || cardToShow) return;
+  showTurnPopup();
+}
+function showTurnPopup() {
+  document.getElementById('popup-turn').style.display = 'flex';
+  document.getElementById('turn-player-text').textContent = `C’est au tour de ${players[current].name} !`;
+  document.getElementById('popup-dice-result').style.display = 'none';
+  document.getElementById('dice-touchable').style.display = 'flex';
+  document.getElementById('roll').disabled = true;
+}
+function hidePopup(elId) {
+  document.getElementById(elId).style.display = 'none';
+}
+function launchDiceFromPopup() {
+  dice = [rand(1,6), rand(1,6)];
+  document.getElementById('popup-move-die').textContent = dice[0];
+  document.getElementById('popup-action-die').textContent = dice[1];
+  document.getElementById('popup-dice-result').style.display = 'block';
+  document.getElementById('dice-touchable').style.display = 'none';
+}
+function closeTurnPopupAndPlay() {
+  hidePopup('popup-turn');
+  handleMove();
+}
+function rand(a,b){ return Math.floor(Math.random()*(b-a+1))+a;}
+function handleMove() {
+  let p = players[current];
+  let log = [];
+  let afterCard = () => {
+    let cell = board[p.pos];
+    if(cell.type==="ligne-droite") {
+      log.push("Ligne droite : ⚡ Utilise un boost pour avancer de 3 cases ?");
+      if(p.boost>0) { p.boost--; p.pos = Math.min(p.pos+3,boardLength-1); log.push("Boost utilisé !"); }
+    }
+    if(cell.type==="virage-simple") {
+      log.push("Virage simple : ⚡ Peut utiliser un boost pour avancer d’1 case");
+      if(p.boost>0) { p.boost--; p.pos = Math.min(p.pos+1,boardLength-1); log.push("Boost utilisé !"); }
+    }
+    if(cell.type==="virage-serre") {
+      if(p.pneus>=2) { log.push("Virage serré : 🛞 2 pneus consommés"); p.pneus-=2;}
+      else { log.push("Virage serré : pas assez de pneus, tour perdu !"); skipTurn[current]=true; }
+    }
+    if(cell.type==="pitstop") {
+      let pit = pitstops[rand(0,pitstops.length-1)];
+      showCard(pit, "pitstop", () => {
+        log.push("Pitstop : "+pit);
+        p.pneus+=2; p.boost+=1;
+        log.push("+2 pneus, +1 boost");
+        duelEtFin();
+      });
+      return;
+    }
+    duelEtFin();
+  };
+  let duelEtFin = () => {
+    let duel = players.filter(pl=>pl.pos===p.pos).length > 1;
+    if (duel) {
+      let other = (current+1)%players.length;
+      let duel1 = rand(1,6), duel2 = rand(1,6);
+      log.push(`Duel ! ${players[current].name}:${duel1} vs ${players[other].name}:${duel2}`);
+      if (duel1 > duel2) { p.pos = Math.min(p.pos+1,boardLength-1); log.push(`${p.name} gagne le duel !`);}
+      else if (duel2 > duel1) { p.pos = Math.max(0,p.pos-1); log.push(`${players[other].name} gagne le duel !`);}
+      else { log.push("Égalité, pas de changement."); }
+    }
+    addHistory(log.join(" | "));
+    setTimeout(nextPlayer, 900);
+  };
+  let oldPos = p.pos;
+  p.pos += dice[0];
+  if (p.pos >= boardLength) p.pos = boardLength-1;
+  log.push(`${p.name} avance de ${dice[0]} cases`);
+  if (skipTurn[current]) {
+    addMsg(`${players[current].name} passe son tour !`);
+    skipTurn[current] = false;
+    setTimeout(nextPlayer, 900);
+    return;
+  }
+  if (dice[1] === 1 || dice[1] === 2) {
+    let ev = evenements[rand(0,evenements.length-1)];
+    showCard(ev, "evenement", () => {
+      log.push("Événement : " + ev);
+      if(ev.includes("avancez d'une case")) p.pos = Math.min(p.pos+1, boardLength-1);
+      if(ev.includes("tous perdent 1 pneu")) players.forEach(pl=>pl.pneus = Math.max(0,pl.pneus-1));
+      if(ev.includes("reculez de 2 cases")) p.pos = Math.max(0,p.pos-2);
+      if(ev.includes("avancez de 2 cases")) p.pos = Math.min(boardLength-1,p.pos+2);
+      if(ev.includes("passez votre prochain tour")) skipTurn[current] = true;
+      if(ev.includes("perdez 2 pneus")) p.pneus = Math.max(0,p.pneus-2);
+      if(ev.includes("avancez de 3 cases")) p.pos = Math.min(boardLength-1,p.pos+3);
+      if(ev.includes("avancez sur la case du joueur devant vous")) {
+        let ahead = players.filter((pl,i)=>i!==current && pl.pos>p.pos);
+        if(ahead.length>0) p.pos = ahead[0].pos;
+      }
+      if(ev.includes("recule d'une case")) {
+        let other = (current+1)%players.length;
+        players[other].pos = Math.max(0,players[other].pos-1);
+      }
+      if(ev.includes("+1 pneu")) p.pneus++;
+      if(ev.includes("+1 boost")) p.boost++;
+      afterCard();
+    });
+    return;
+  }
+  if (dice[1] === 5) { p.boost++; log.push("Gagne 1 boost"); }
+  if (dice[1] === 6) { if(p.pneus>0){p.pneus--;} log.push("Perd 1 pneu"); }
+  if (dice[1] === 3) { p.pneus++; log.push("Gagne 1 pneu"); }
+  if (dice[1] === 4) { p.boost++; log.push("Gagne 1 boost"); }
+  afterCard();
+}
+function nextPlayer() {
+  dice = [null, null];
+  document.getElementById('event').textContent = '';
+  document.getElementById('msg').textContent = '';
+  current = (current+1)%players.length;
+  update();
+}
+function update() {
+  let winner = players.find(p => p.pos >= boardLength-1);
+  if (winner && !gameOver) {
+    gameOver = true;
+    addMsg(`${winner.name} a gagné la course !`);
+  }
+  let html = '';
+  for(let i=0;i<boardLength;i++) {
+    // décalage vertical si plusieurs voitures sur la même case (visuel, max 3 joueurs visibles sans chevauchement)
+    let carsOnCell = players.filter(p=>p.pos===i);
+    let cars = carsOnCell.map((p, j)=>
+      `<img class="car" src="${p.imageUrl}" alt="F1" style="top:${3+j*18}px;left:50%;" />`
+    ).join('');
+    let cellType = board[i].type;
+    let classes = "cell "+cellType;
+    html += `<div class="${classes}">${i===0?'Départ':i===boardLength-1?'Arrivée':i}${cars}</div>`;
+  }
+  document.getElementById('board').innerHTML = html;
+  document.getElementById('players').innerHTML = players.map((p,i)=>
+    `<div class="player${i===current?' active':''}" style="border-color:${p.color}">
+      <div class="label">${p.name}</div>
+      <div class="stats">
+        <span class="stat boost">⚡ ${p.boost}</span>
+        <span class="stat pneus">🛞 ${p.pneus}</span>
+      </div>
+    </div>`).join('');
+  document.getElementById('roll').disabled = gameOver || cardToShow;
+  document.getElementById('popup-card').style.display = cardToShow ? 'flex' : 'none';
+}
+function addMsg(msg) {
+  document.getElementById('msg').textContent = msg;
+}
+function addHistory(msg) {
+  history.unshift(msg);
+  document.getElementById('history').innerHTML = history.slice(0,7).map(h=>`<li>${h}</li>`).join('');
+}
+function showCard(text, type, onClose) {
+  cardToShow = text;
+  cardType = type;
+  continueAfterCard = onClose;
+  let content = document.getElementById('card-content');
+  content.className = 'card-content' + (type==="pitstop" ? " pitstop" : "");
+  document.getElementById('card-title').textContent = type === 'pitstop' ? 'Carte Pitstop' : 'Carte Événement';
+  document.getElementById('card-text').textContent = text;
+  document.getElementById('popup-card').style.display = 'flex';
+  document.getElementById('roll').disabled = true;
+}
+function closeCard() {
+  document.getElementById('popup-card').style.display = 'none';
+  let cb = continueAfterCard;
+  cardToShow = null; cardType = null; continueAfterCard = null;
+  if(cb) cb();
+}
+generateBoard();
+</script>
+</body>
+</html>
