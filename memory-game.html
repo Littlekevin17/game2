@@ -2,11 +2,30 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Memory F1 - Phaser</title>
+  <title>Memory F1 - Responsive Phaser</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
   <style>
-    body { margin:0; background:#243; color:#fff; font-family:sans-serif;}
-    canvas { display:block; margin:40px auto;}
+    body {
+      margin: 0;
+      background: #243;
+      color: #fff;
+      font-family: sans-serif;
+    }
+    #game-parent {
+      max-width: 100vw;
+      max-height: 100vh;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+      margin: 0 auto;
+      max-width: 100vw;
+      max-height: 100vh;
+      width: 100vw !important;
+      height: auto !important;
+      background: #222;
+    }
     button {
       display: block;
       margin: 15px auto;
@@ -18,16 +37,53 @@
 </head>
 <body>
   <button id="restartBtn">Rejouer</button>
+  <div id="game-parent"></div>
   <script>
     const PAIRS = 20;
-    const CARD_WIDTH = 80;
-    const CARD_HEIGHT = 100;
-    const COLS = 8; // Largeur de la grille
-    const ROWS = 5; // 8x5 = 40 cases (20 paires)
-
-    let cards, firstCard, secondCard, lockBoard, matchedPairs;
+    const COLS = 8;
+    const ROWS = 5; // 8x5 = 40
+    const CARD_RATIO = 1.5; // Largeur/hauteur pour les 300x200
+    const CARD_GAP = 0.03;  // Espacement relatif entre les cartes
+    let config, game, cards, firstCard, secondCard, lockBoard, matchedPairs;
     let scoreText, timerText, restartBtn, timer, clickCount = 0, timerInterval;
     let matchSound;
+
+    function getSizes() {
+      // Calcul automatique selon écran
+      const marginX = 16, marginY = 86; // marges pour texte/bouton
+      const w = Math.min(window.innerWidth, 1100);
+      const h = Math.min(window.innerHeight, 800);
+      // Espace utile sans marges (haut, textes, bouton)
+      const useW = w - 2*marginX;
+      const useH = h - marginY;
+      // Calcule la largeur max de carte possible (sans dépasser ni la largeur, ni la hauteur)
+      const widthByW = useW / COLS * (1 - CARD_GAP);
+      const widthByH = (useH / ROWS * (1 - CARD_GAP)) * CARD_RATIO;
+      const cardW = Math.min(widthByW, widthByH);
+      const cardH = cardW / CARD_RATIO;
+      // Origine du plateau pour centrer
+      const boardW = COLS * cardW + (COLS-1) * cardW * CARD_GAP;
+      const boardH = ROWS * cardH + (ROWS-1) * cardH * CARD_GAP;
+      const baseX = (w - boardW) / 2;
+      const baseY = marginY;
+      return { w, h, cardW, cardH, baseX, baseY };
+    }
+
+    function createConfig() {
+      const sizes = getSizes();
+      return {
+        type: Phaser.AUTO,
+        parent: 'game-parent',
+        width: sizes.w,
+        height: sizes.h,
+        backgroundColor: "#243",
+        scene: { preload, create },
+        scale: {
+          mode: Phaser.Scale.NONE,
+          autoCenter: Phaser.Scale.CENTER_BOTH
+        }
+      };
+    }
 
     function preload() {
       this.load.image('back', 'assets/carte-dos.jpg');
@@ -38,6 +94,8 @@
     }
 
     function create() {
+      const {cardW, cardH, baseX, baseY} = getSizes();
+
       cards = [];
       lockBoard = false;
       matchedPairs = 0;
@@ -49,14 +107,12 @@
       if (timerInterval) clearInterval(timerInterval);
       timerInterval = setInterval(() => {
         timer++;
-        timerText.setText('Temps: ' + timer + 's');
+        if(timerText) timerText.setText('Temps: ' + timer + 's');
       }, 1000);
 
-      // Prépare 2*PAIRS indices, chaque image deux fois
+      // Créé un tableau mélangé des indices de cartes
       let values = [];
-      for (let i = 1; i <= PAIRS; i++) {
-        values.push(i, i);
-      }
+      for (let i = 1; i <= PAIRS; i++) values.push(i, i);
       Phaser.Utils.Array.Shuffle(values);
 
       let idx = 0;
@@ -64,8 +120,11 @@
         for (let x = 0; x < COLS; x++) {
           if (idx >= values.length) break;
           let val = values[idx++];
-          let card = this.add.image(60 + x * 85, 80 + y * 110, 'back')
-            .setInteractive()
+          let posX = baseX + x * (cardW + cardW*CARD_GAP) + cardW/2;
+          let posY = baseY + y * (cardH + cardH*CARD_GAP) + cardH/2;
+          let card = this.add.image(posX, posY, 'back')
+            .setInteractive({useHandCursor:true})
+            .setDisplaySize(cardW, cardH)
             .setData('value', val)
             .setData('flipped', false);
           card.on('pointerdown', () => onCardClick.call(this, card));
@@ -73,8 +132,8 @@
         }
       }
 
-      scoreText = this.add.text(10, 15, 'Coups: 0', { font:'20px Arial', fill:'#fff' });
-      timerText = this.add.text(500, 15, 'Temps: 0s', { font:'20px Arial', fill:'#fff' });
+      scoreText = this.add.text(18, 15, 'Coups: 0', { font:'20px Arial', fill:'#fff' });
+      timerText = this.add.text(getSizes().w-170, 15, 'Temps: 0s', { font:'20px Arial', fill:'#fff' });
 
       matchSound = this.sound.add('matchSound');
 
@@ -91,20 +150,20 @@
       card.setData('flipped', true);
 
       clickCount++;
-      scoreText.setText('Coups: ' + clickCount);
+      if(scoreText) scoreText.setText('Coups: ' + clickCount);
 
       if (!firstCard) {
         firstCard = card;
       } else {
         secondCard = card;
         lockBoard = true;
-        this.time.delayedCall(800, () => {
+        game.scene.scenes[0].time.delayedCall(700, () => {
           if (firstCard.getData('value') === secondCard.getData('value')) {
             matchedPairs += 1;
             matchSound.play();
             if (matchedPairs === PAIRS) {
               clearInterval(timerInterval);
-              this.add.text(250, 650, 'Gagné ! 🎉', { font:'32px Arial', fill:'#0f0' });
+              game.scene.scenes[0].add.text(getSizes().w/2-80, getSizes().h-60, 'Gagné ! 🎉', { font:'32px Arial', fill:'#0f0' });
             }
           } else {
             firstCard.setTexture('back');
@@ -118,14 +177,23 @@
       }
     }
 
-    const config = {
-      type: Phaser.AUTO,
-      width: 800,
-      height: 720,
-      scene: { preload, create }
-    };
+    /// Responsive : relance le jeu sur resize (soft refresh)
+    function restartResponsive() {
+      if(game) {
+        clearInterval(timerInterval);
+        game.destroy(true);
+        document.getElementById('game-parent').innerHTML = '';
+      }
+      config = createConfig();
+      game = new Phaser.Game(config);
+    }
 
-    const game = new Phaser.Game(config);
+    // Initialisation automatique + écouteur responsive
+    window.addEventListener('resize', () => {
+      restartResponsive();
+    });
+
+    restartResponsive();
   </script>
 </body>
 </html>
