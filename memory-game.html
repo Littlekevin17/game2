@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Jeu Memory en Phaser</title>
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
+  <style>
+    body { margin:0; background:#243; color:#fff; font-family:sans-serif;}
+    canvas { display:block; margin:40px auto;}
+    button {
+      display: block;
+      margin: 15px auto;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <button id="restartBtn">Rejouer</button>
+  <script>
+    const NB_PAIRS = 10; // 10 paires désormais
+    let cards, firstCard, secondCard, lockBoard, matchedPairs;
+    let scoreText, timerText, restartBtn, timerEvent;
+    let clickCount = 0;
+
+    function preload() {
+      // Génère des couleurs différentes pour chaque paire (tu peux remplacer ça par tes images plus tard)
+      for(let i=1; i<=NB_PAIRS; i++) {
+        this.textures.generate(`card${i}`, { data:[`#${(i*234567).toString(16).substr(0,6)}`], width:80, height:100 });
+      }
+      this.textures.generate('back', { data:['#888'], width:80, height:100 });
+      // Charge le son
+      this.load.audio('matchSound', 'sounds/match.mp3');
+    }
+
+    function create() {
+      cards = [];
+      lockBoard = false;
+      matchedPairs = 0;
+      clickCount = 0;
+
+      // Génére les valeurs des cartes et mélange
+      let values = [];
+      for (let i=1; i<=NB_PAIRS; i++) {
+        values.push(i, i); // 2 fois chaque valeur
+      }
+      Phaser.Utils.Array.Shuffle(values);
+
+      // Layout 5x4 (20 cartes pour 10 paires)
+      let cols = 5, rows = 4;
+      let idx = 0;
+      for (let y=0; y<rows; y++) {
+        for (let x=0; x<cols; x++) {
+          if (idx >= values.length) break;
+          let val = values[idx++];
+          let card = this.add.image(100 + x*90, 80 + y*130, 'back').setInteractive().setData('value', val);
+          card.flipped = false;
+          card.on('pointerdown', () => onCardClick.call(this, card));
+          cards.push(card);
+        }
+      }
+
+      // Texte score (coups)
+      scoreText = this.add.text(10, 20, 'Coups: 0', { font:'20px Arial', fill:'#fff' });
+      // Texte chrono
+      timerText = this.add.text(350, 20, 'Temps: 0s', { font:'20px Arial', fill:'#fff' });
+
+      // Son de match réussi
+      this.matchSound = this.sound.add('matchSound');
+
+      // Chrono via Phaser
+      timerEvent = this.time.addEvent({ delay: 1000, callback: updateTimer, callbackScope: this, loop: true });
+
+      // Bouton Rejouer HTML
+      restartBtn = document.getElementById('restartBtn');
+      restartBtn.onclick = () => {
+        this.scene.restart();
+      };
+    }
+
+    function updateTimer() {
+      let currentTime = Math.floor(timerEvent.getElapsedSeconds());
+      timerText.setText('Temps: ' + currentTime + 's');
+    }
+
+    function onCardClick(card) {
+      if (lockBoard || card.flipped) return;
+      card.setTexture('card'+card.getData('value'));
+      card.flipped = true;
+
+      clickCount++;
+      scoreText.setText('Coups: ' + clickCount);
+
+      if (!firstCard) {
+        firstCard = card;
+      } else {
+        secondCard = card;
+        lockBoard = true;
+        // Vérifie si les deux cartes matchent
+        this.time.delayedCall(800, () => {
+          if (firstCard.getData('value') === secondCard.getData('value')) {
+            matchedPairs += 1;
+            this.matchSound.play();
+            if (matchedPairs === NB_PAIRS) {
+              this.add.text(150, 550, 'Gagné ! 🎉', { font:'28px Arial', fill:'#0f0' });
+              timerEvent.paused = true;
+            }
+          } else {
+            firstCard.setTexture('back');
+            secondCard.setTexture('back');
+            firstCard.flipped = false;
+            secondCard.flipped = false;
+          }
+          firstCard = secondCard = null;
+          lockBoard = false;
+        });
+      }
+    }
+
+    const config = {
+      type: Phaser.AUTO,
+      width: 600,
+      height: 600,
+      scene: { preload, create }
+    };
+
+    const game = new Phaser.Game(config);
+  </script>
+</body>
+</html>
