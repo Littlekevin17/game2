@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>Memory F1 - Responsive Phaser</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta charset="UTF-8" />
+  <title>Memory F1 - Phaser Responsive</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
   <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
   <style>
     body {
@@ -11,189 +11,219 @@
       background: #243;
       color: #fff;
       font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
     #game-parent {
-      max-width: 100vw;
-      max-height: 100vh;
-      overflow: hidden;
+      width: 100vw;
+      max-width: 1100px;
+      aspect-ratio: 8 / 5; /* Ratio adapté selon COLS : ROWS (8:5) */
+      background: #222;
+      position: relative;
     }
     canvas {
+      width: 100%;
+      height: 100%;
       display: block;
-      margin: 0 auto;
-      max-width: 100vw;
-      max-height: 100vh;
-      width: 100vw !important;
-      height: auto !important;
-      background: #222;
+      image-rendering: crisp-edges;
+      user-select: none;
     }
     button {
-      display: block;
       margin: 15px auto;
       padding: 10px 20px;
       font-size: 16px;
       cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      background-color: #0a74da;
+      color: white;
+      font-weight: bold;
+      user-select: none;
     }
   </style>
 </head>
 <body>
-  <button id="restartBtn">Rejouer</button>
-  <div id="game-parent"></div>
-  <script>
-    const PAIRS = 20;
-    const COLS = 8;
-    const ROWS = 5; // 8x5 = 40
-    const CARD_RATIO = 1.5; // Largeur/hauteur pour les 300x200
-    const CARD_GAP = 0.03;  // Espacement relatif entre les cartes
-    let config, game, cards, firstCard, secondCard, lockBoard, matchedPairs;
-    let scoreText, timerText, restartBtn, timer, clickCount = 0, timerInterval;
-    let matchSound;
 
-    function getSizes() {
-      // Calcul automatique selon écran
-      const marginX = 16, marginY = 86; // marges pour texte/bouton
-      const w = Math.min(window.innerWidth, 1100);
-      const h = Math.min(window.innerHeight, 800);
-      // Espace utile sans marges (haut, textes, bouton)
-      const useW = w - 2*marginX;
-      const useH = h - marginY;
-      // Calcule la largeur max de carte possible (sans dépasser ni la largeur, ni la hauteur)
-      const widthByW = useW / COLS * (1 - CARD_GAP);
-      const widthByH = (useH / ROWS * (1 - CARD_GAP)) * CARD_RATIO;
-      const cardW = Math.min(widthByW, widthByH);
-      const cardH = cardW / CARD_RATIO;
-      // Origine du plateau pour centrer
-      const boardW = COLS * cardW + (COLS-1) * cardW * CARD_GAP;
-      const boardH = ROWS * cardH + (ROWS-1) * cardH * CARD_GAP;
-      const baseX = (w - boardW) / 2;
-      const baseY = marginY;
-      return { w, h, cardW, cardH, baseX, baseY };
+<button id="restartBtn">Rejouer</button>
+<div id="game-parent"></div>
+
+<script>
+  const PAIRS = 20;
+  const COLS = 8;
+  const ROWS = 5;
+  const CARD_RATIO = 3 / 2; // ratio largeur/hauteur de tes images
+  const CARD_GAP_RATIO = 0.03; // écart relatif entre les cartes
+
+  let game, cards, firstCard, secondCard, lockBoard, matchedPairs;
+  let scoreText, timerText, clickCount = 0, timer = 0, timerInterval;
+  let matchSound;
+
+  function createConfig() {
+    // On se base sur la taille de #game-parent
+    const parent = document.getElementById('game-parent');
+    const width = parent.clientWidth;
+    const height = parent.clientHeight;
+    return {
+      type: Phaser.AUTO,
+      parent: 'game-parent',
+      width: width,
+      height: height,
+      backgroundColor: '#243',
+      scene: {
+        preload: preload,
+        create: create,
+      },
+      scale: {
+        mode: Phaser.Scale.NONE,
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+      },
+    };
+  }
+
+  function preload() {
+    this.load.image('back', 'assets/carte-dos.jpg');
+    for (let i = 1; i <= PAIRS; i++) {
+      this.load.image('face' + i, 'assets/' + i + '.jpg');
+    }
+    this.load.audio('matchSound', 'sounds/match.mp3');
+  }
+
+  function create() {
+    cards = [];
+    lockBoard = false;
+    matchedPairs = 0;
+    clickCount = 0;
+    firstCard = null;
+    secondCard = null;
+    timer = 0;
+
+    if (timerInterval) clearInterval(timerInterval);
+
+    // Dimensions de la zone de jeu Phaser
+    const w = this.scale.width;
+    const h = this.scale.height;
+
+    // Calcul taille cartes et espacements selon zone de jeu et ratio 
+    // On veut que tout tienne en grille COLS x ROWS
+    // Espace horizontal total = w. On enlève les gaps.
+    let totalGapW = (COLS - 1) * CARD_GAP_RATIO * w;
+    let totalGapH = (ROWS - 1) * CARD_GAP_RATIO * h;
+
+    let cardW = (w - totalGapW) / COLS;
+    let cardH = cardW / CARD_RATIO;
+
+    // On vérifie si en hauteur ça passe sinon on redimensionne en fonction de h
+    const totalCardHeight = ROWS * cardH + totalGapH;
+    if (totalCardHeight > h) {
+      cardH = (h - totalGapH) / ROWS;
+      cardW = cardH * CARD_RATIO;
     }
 
-    function createConfig() {
-      const sizes = getSizes();
-      return {
-        type: Phaser.AUTO,
-        parent: 'game-parent',
-        width: sizes.w,
-        height: sizes.h,
-        backgroundColor: "#243",
-        scene: { preload, create },
-        scale: {
-          mode: Phaser.Scale.NONE,
-          autoCenter: Phaser.Scale.CENTER_BOTH
-        }
-      };
-    }
+    const gapW = CARD_GAP_RATIO * cardW;
+    const gapH = CARD_GAP_RATIO * cardH;
 
-    function preload() {
-      this.load.image('back', 'assets/carte-dos.jpg');
-      for (let i = 1; i <= PAIRS; i++) {
-        this.load.image('face' + i, 'assets/' + i + '.jpg');
+    // Positions de base pour centrer la grille
+    const boardWidth = COLS * cardW + (COLS - 1) * gapW;
+    const boardHeight = ROWS * cardH + (ROWS - 1) * gapH;
+    const startX = (w - boardWidth) / 2 + cardW / 2;
+    const startY = (h - boardHeight) / 2 + cardH / 2;
+
+    // Crée tableau valeurs cartes (2x chaque indice)
+    let values = [];
+    for (let i = 1; i <= PAIRS; i++) {
+      values.push(i, i);
+    }
+    Phaser.Utils.Array.Shuffle(values);
+
+    let idx = 0;
+    for (let y = 0; y < ROWS; y++) {
+      for (let x = 0; x < COLS; x++) {
+        if (idx >= values.length) break;
+        let val = values[idx++];
+        let posX = startX + x * (cardW + gapW);
+        let posY = startY + y * (cardH + gapH);
+        let card = this.add.image(posX, posY, 'back')
+          .setInteractive({ useHandCursor: true })
+          .setDisplaySize(cardW, cardH)
+          .setData('value', val)
+          .setData('flipped', false);
+        card.on('pointerdown', () => onCardClick.call(this, card));
+        cards.push(card);
       }
-      this.load.audio('matchSound', 'sounds/match.mp3');
     }
 
-    function create() {
-      const {cardW, cardH, baseX, baseY} = getSizes();
+    scoreText = this.add.text(20, 15, 'Coups: 0', { font: '20px Arial', fill: '#fff' });
+    timerText = this.add.text(w - 150, 15, 'Temps: 0s', { font: '20px Arial', fill: '#fff' });
 
-      cards = [];
-      lockBoard = false;
-      matchedPairs = 0;
-      clickCount = 0;
-      firstCard = null;
-      secondCard = null;
-      timer = 0;
+    matchSound = this.sound.add('matchSound');
 
-      if (timerInterval) clearInterval(timerInterval);
-      timerInterval = setInterval(() => {
-        timer++;
-        if(timerText) timerText.setText('Temps: ' + timer + 's');
-      }, 1000);
+    timerInterval = setInterval(() => {
+      timer++;
+      if (timerText) timerText.setText('Temps: ' + timer + 's');
+    }, 1000);
+  }
 
-      // Créé un tableau mélangé des indices de cartes
-      let values = [];
-      for (let i = 1; i <= PAIRS; i++) values.push(i, i);
-      Phaser.Utils.Array.Shuffle(values);
+  function onCardClick(card) {
+    if (lockBoard || card.getData('flipped')) return;
 
-      let idx = 0;
-      for (let y = 0; y < ROWS; y++) {
-        for (let x = 0; x < COLS; x++) {
-          if (idx >= values.length) break;
-          let val = values[idx++];
-          let posX = baseX + x * (cardW + cardW*CARD_GAP) + cardW/2;
-          let posY = baseY + y * (cardH + cardH*CARD_GAP) + cardH/2;
-          let card = this.add.image(posX, posY, 'back')
-            .setInteractive({useHandCursor:true})
-            .setDisplaySize(cardW, cardH)
-            .setData('value', val)
-            .setData('flipped', false);
-          card.on('pointerdown', () => onCardClick.call(this, card));
-          cards.push(card);
-        }
-      }
+    card.setTexture('face' + card.getData('value'));
+    card.setData('flipped', true);
 
-      scoreText = this.add.text(18, 15, 'Coups: 0', { font:'20px Arial', fill:'#fff' });
-      timerText = this.add.text(getSizes().w-170, 15, 'Temps: 0s', { font:'20px Arial', fill:'#fff' });
+    clickCount++;
+    if (scoreText) scoreText.setText('Coups: ' + clickCount);
 
-      matchSound = this.sound.add('matchSound');
+    if (!firstCard) {
+      firstCard = card;
+    } else {
+      secondCard = card;
+      lockBoard = true;
 
-      restartBtn = document.getElementById('restartBtn');
-      restartBtn.onclick = () => {
-        clearInterval(timerInterval);
-        this.scene.restart();
-      };
-    }
+      game.scene.scenes[0].time.delayedCall(700, () => {
+        if (firstCard.getData('value') === secondCard.getData('value')) {
+          matchedPairs++;
+          matchSound.play();
 
-    function onCardClick(card) {
-      if (lockBoard || card.getData('flipped')) return;
-      card.setTexture('face' + card.getData('value'));
-      card.setData('flipped', true);
-
-      clickCount++;
-      if(scoreText) scoreText.setText('Coups: ' + clickCount);
-
-      if (!firstCard) {
-        firstCard = card;
-      } else {
-        secondCard = card;
-        lockBoard = true;
-        game.scene.scenes[0].time.delayedCall(700, () => {
-          if (firstCard.getData('value') === secondCard.getData('value')) {
-            matchedPairs += 1;
-            matchSound.play();
-            if (matchedPairs === PAIRS) {
-              clearInterval(timerInterval);
-              game.scene.scenes[0].add.text(getSizes().w/2-80, getSizes().h-60, 'Gagné ! 🎉', { font:'32px Arial', fill:'#0f0' });
-            }
-          } else {
-            firstCard.setTexture('back');
-            secondCard.setTexture('back');
-            firstCard.setData('flipped', false);
-            secondCard.setData('flipped', false);
+          if (matchedPairs === PAIRS) {
+            clearInterval(timerInterval);
+            let w = game.scale.width;
+            let h = game.scale.height;
+            game.scene.scenes[0].add.text(w / 2 - 80, h - 60, 'Gagné ! 🎉', { font: '32px Arial', fill: '#0f0' });
           }
-          firstCard = secondCard = null;
-          lockBoard = false;
-        });
-      }
+        } else {
+          firstCard.setTexture('back');
+          secondCard.setTexture('back');
+          firstCard.setData('flipped', false);
+          secondCard.setData('flipped', false);
+        }
+        firstCard = secondCard = null;
+        lockBoard = false;
+      });
     }
+  }
 
-    /// Responsive : relance le jeu sur resize (soft refresh)
-    function restartResponsive() {
-      if(game) {
-        clearInterval(timerInterval);
-        game.destroy(true);
-        document.getElementById('game-parent').innerHTML = '';
-      }
-      config = createConfig();
-      game = new Phaser.Game(config);
+  function restartGame() {
+    if (timerInterval) clearInterval(timerInterval);
+    if (game) {
+      game.destroy(true);
+      document.getElementById('game-parent').innerHTML = '';
     }
+    game = new Phaser.Game(createConfig());
+  }
 
-    // Initialisation automatique + écouteur responsive
-    window.addEventListener('resize', () => {
-      restartResponsive();
-    });
+  window.addEventListener('resize', () => {
+    restartGame();
+  });
 
-    restartResponsive();
-  </script>
+  document.getElementById('restartBtn').onclick = () => {
+    restartGame();
+  };
+
+  // Initialisation au chargement
+  window.onload = () => {
+    restartGame();
+  };
+</script>
+
 </body>
 </html>
