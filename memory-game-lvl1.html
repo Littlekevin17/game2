@@ -1,119 +1,303 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8" />
-  <title>Memory F1 - Facile (5 paires)</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8" />
+  <title>Memory F1 - 5 Paires</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
   <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
   <style>
-    html, body { margin:0; padding:0; background:#243; color:#fff; font-family:sans-serif; height:100vh; width:100vw;}
-    #header { display:flex; align-items:center; justify-content:space-between; background:#111a; padding:12px; position:fixed; left:0; right:0; top:0; height:52px; z-index:5;}
-    #header div { min-width:100px; }
-    #header button { background:#00a6ff; color:#fff; border:none; padding:6px 12px; border-radius:5px; font-weight:bold; cursor:pointer; font-size:1.1rem;}
-    #header button:hover { background:#036494;}
-    #game-container { position:absolute; top:52px; left:0; right:0; bottom:0; background:#222;}
-    canvas { display: block;}
-    #backBtn { background: #f4c20d; color:#222; border: none; border-radius:5px; font-weight: bold; padding: 5px 12px; margin-right:8px; cursor:pointer;}
+    body {
+      margin: 0;
+      background: #243;
+      color: #fff;
+      font-family: sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      overflow: hidden;
+    }
+    #header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 12px;
+      background: #111c;
+      color: #fff;
+      font-size: 16px;
+      position: relative;
+      height: 40px;
+      max-width: 1100px;
+      margin: 10px auto 0;
+      border-radius: 5px;
+    }
+    #header > div {
+      min-width: 75px;
+      text-align: center;
+    }
+    #restartBtn {
+      margin: 0 auto;
+      position: static;
+      cursor: pointer;
+      padding: 6px 16px;
+      border-radius: 5px;
+      border: none;
+      background: #0a74da;
+      color: white;
+      font-weight: bold;
+      font-size: 18px;
+      box-shadow: 0 2px 6px #111a;
+      user-select: none;
+    }
+    #game-parent {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      top: 60px; /* sous le header */
+      width: 100vw;
+      height: calc(100vh - 60px);
+      max-width: 1100px;
+      margin: 0 auto;
+      background: #222;
+    }
+    canvas {
+      width: 100% !important;
+      height: 100% !important;
+      display: block;
+      image-rendering: crisp-edges;
+      user-select: none;
+    }
   </style>
 </head>
 <body>
-  <div id="header">
-    <button id="backBtn" onclick="window.location='memory-game.html'">Accueil</button>
-    <div id="moves">Coups : 0</div>
-    <button id="restart">Rejouer</button>
-    <div id="timer">Temps : 0s</div>
-  </div>
-  <div id="game-container"></div>
-  <script>
-    const NB_PAIRS = 5;  // <<< CHANGE CE CHIFFRE pour chaque page niveau !
-    const CARD_RATIO = 3/2, CARD_GAP_RATIO = 0.03;
-    let game;
 
-    function getPlateau(nbPairs) {
-      const h = document.getElementById('game-container').clientHeight || window.innerHeight-52;
-      const total = nbPairs*2;
-      let cols, rows;
-      if (h<350) { cols=Math.min(10,total); rows=Math.ceil(total/cols);}
-      else { cols=total<=16?4:total<=24?5:total<=30?6:total<=36?6:8; rows=Math.ceil(total/cols);}
-      return {cols, rows};
+<div id="header">
+  <div id="infoCoups">Coups: 0</div>
+  <button id="restartBtn">Rejouer</button>
+  <div id="infoTemps">Temps: 0s</div>
+</div>
+
+<div id="game-parent"></div>
+
+<script>
+  // Configuration adaptée pour 5 paires
+  const PAIRS = 5;      // 5 paires = 10 cartes
+  const COLS = 5;       // 5 colonnes par ligne
+  const ROWS = 2;       // 2 lignes suffisent
+  
+  const CARD_RATIO = 3 / 2; // largeur/hauteur
+  const CARD_GAP_RATIO = 0.03;
+
+  let game, matchSound, failSound, winSound;
+
+  function getSizes() {
+    const parent = document.getElementById('game-parent');
+    const w = parent.clientWidth, h = parent.clientHeight;
+    let totalGapW = (COLS - 1) * CARD_GAP_RATIO * w;
+    let totalGapH = (ROWS - 1) * CARD_GAP_RATIO * h;
+    let cardW = (w - totalGapW) / COLS;
+    let cardH = cardW / CARD_RATIO;
+    const totalCardHeight = ROWS * cardH + totalGapH;
+    if (totalCardHeight > h) {
+      cardH = (h - totalGapH) / ROWS;
+      cardW = cardH * CARD_RATIO;
     }
+    const gapW = CARD_GAP_RATIO * cardW;
+    const gapH = CARD_GAP_RATIO * cardH;
+    const boardWidth = COLS * cardW + (COLS - 1) * gapW;
+    const boardHeight = ROWS * cardH + (ROWS - 1) * gapH;
+    const startX = (w - boardWidth) / 2 + cardW / 2;
+    const startY = (h - boardHeight) / 2 + cardH / 2;
+    return { w, h, cardW, cardH, gapW, gapH, startX, startY };
+  }
 
-    function getSizes(cols, rows) {
-      const parent = document.getElementById('game-container'); const w=parent.clientWidth, h=parent.clientHeight;
-      let totalGapW=(cols-1)*CARD_GAP_RATIO*w, totalGapH=(rows-1)*CARD_GAP_RATIO*h, cardW=(w-totalGapW)/cols, cardH=cardW/CARD_RATIO;
-      if(rows*cardH+totalGapH > h) { cardH=(h-totalGapH)/rows; cardW=cardH*CARD_RATIO;}
-      const gapW=CARD_GAP_RATIO*cardW, gapH=CARD_GAP_RATIO*cardH, boardW=cols*cardW+(cols-1)*gapW, boardH=rows*cardH+(rows-1)*gapH;
-      const startX=(w-boardW)/2+cardW/2, startY=(h-boardH)/2+cardH/2;
-      return {cardW, cardH, gapW, gapH, startX, startY, w, h};
+  function createConfig() {
+    const parent = document.getElementById('game-parent');
+    return {
+      type: Phaser.AUTO,
+      parent: 'game-parent',
+      width: parent.clientWidth,
+      height: parent.clientHeight,
+      backgroundColor: '#243',
+      scene: { preload, create },
+      scale: { mode: Phaser.Scale.NONE, autoCenter: Phaser.Scale.CENTER_BOTH }
+    };
+  }
+
+  function preload() {
+    this.load.image('back', 'assets/carte-dos.jpg');
+    for (let i = 1; i <= PAIRS; i++) {
+      this.load.image('face' + i, 'assets/' + i + '.jpg');
     }
+    this.load.audio('matchSound', 'sounds/match.mp3');
+    this.load.audio('failSound', 'sounds/fail.mp3');
+    this.load.audio('winSound', 'sounds/win.mp3');
+  }
 
-    class MemoryScene extends Phaser.Scene {
-      preload() {
-        this.load.image('back','assets/carte-dos.jpg');
-        for(let i=1;i<=NB_PAIRS;i++) this.load.image('face'+i, 'assets/'+i+'.jpg');
-        this.load.audio('match','sounds/match.mp3');
-        this.load.audio('fail','sounds/fail.mp3');
-        this.load.audio('win','sounds/win.mp3');
+  function create() {
+    const scene = this;
+    const { cardW, cardH, gapW, gapH, startX, startY, w, h } = getSizes();
+
+    let moves = 0;
+    let matchedPairs = 0;
+    let timer = 0;
+    let opened = [];
+    let canClick = true;
+
+    const infoCoups = document.getElementById('infoCoups');
+    const infoTemps = document.getElementById('infoTemps');
+    infoCoups.textContent = 'Coups: 0';
+    infoTemps.textContent = 'Temps: 0s';
+
+    matchSound = this.sound.add('matchSound');
+    failSound = this.sound.add('failSound');
+    winSound = this.sound.add('winSound');
+
+    const overlay = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.5)
+      .setDepth(20)
+      .setVisible(false);
+    const victoryBanner = this.add.text(w / 2, h / 2, '', {
+      font: '40px Arial',
+      fill: '#0f0',
+      backgroundColor: '#222d',
+      padding: { left: 24, right: 24, top: 16, bottom: 16 },
+      align: 'center',
+      wordWrap: { width: w * 0.8 }
+    }).setOrigin(0.5).setDepth(21).setVisible(false);
+
+    this.input.once('pointerdown', () => {
+      if (this.sound.context.state === 'suspended') {
+        this.sound.context.resume();
       }
-      create() {
-        const {cols,rows} = getPlateau(NB_PAIRS);
-        const {cardW, cardH, gapW, gapH, startX, startY, w, h}=getSizes(cols,rows);
-        let moves=0, matched=0, opened=[], canClick=true, timer=0;
-        document.getElementById('moves').textContent='Coups : 0';document.getElementById('timer').textContent='Temps : 0s';
-        let overlay=this.add.rectangle(w/2,h/2,w,h,0x000000,0.5).setDepth(10).setVisible(false);
-        let victory=this.add.text(w/2,h/2,'',{fontSize:'38px',color:'#0f0',backgroundColor:'#222d',padding:{x:16,y:10},align:'center',wordWrap:{width:w*0.8}}).setOrigin(0.5).setDepth(11).setVisible(false);
-        let matchSound=this.sound.add('match'), failSound=this.sound.add('fail'), winSound=this.sound.add('win');
-        this.input.once('pointerdown',()=>{if(this.sound.context.state==='suspended')this.sound.context.resume();});
-        if(this.timerEvent)clearInterval(this.timerEvent);
-        this.timerEvent=setInterval(()=>{timer++;document.getElementById('timer').textContent=`Temps : ${timer}s`;},1000);
-        let vals=[];for(let i=1;i<=NB_PAIRS;i++)vals.push(i,i);Phaser.Utils.Array.Shuffle(vals);
-        for(let i=0;i<vals.length;i++){
-        const col=i%cols, row=Math.floor(i/cols), x=startX+col*(cardW+gapW), y=startY+row*(cardH+gapH);
-        const c=this.add.container(x,y), back=this.add.image(0,0,'back').setDisplaySize(cardW,cardH), face=this.add.image(0,0,'face'+vals[i]).setDisplaySize(cardW,cardH).setVisible(false);
-        c.add([back,face]);c.setInteractive();c.setSize(cardW,cardH);c.face=face;c.back=back;c.val=vals[i];c.flipped=false;c.locked=false;
-        c.on('pointerdown',()=>{
-          if(!canClick||c.flipped||c.locked)return;canClick=false;
-          this.tweens.add({targets:c,scaleX:0,duration:100,onComplete:()=>{
-            c.back.setVisible(false);c.face.setVisible(true);
-            this.tweens.add({targets:c,scaleX:1,duration:90,onComplete:()=>{
-              c.flipped=true;opened.push(c);
-              if(opened.length===2){
-                moves++;document.getElementById('moves').textContent=`Coups : ${moves}`;
-                const[a,b]=opened;
-                if(a.val===b.val){
-                  matchSound.play();a.locked=b.locked=true;matched++;
-                  if(matched===NB_PAIRS){clearInterval(this.timerEvent);winSound.play();overlay.setVisible(true);victory.setText(`Bravo !\n${moves} coups\n${timer}s`).setVisible(true);}
-                  opened=[];setTimeout(()=>canClick=true,120);
-                }else{
-                  failSound.play();
-                  setTimeout(()=>this.tweens.add({targets:[a,b],scaleX:0,duration:100,onComplete:()=>{
-                    a.back.setVisible(true);b.back.setVisible(true);a.face.setVisible(false);b.face.setVisible(false);a.flipped=b.flipped=false;
-                    this.tweens.add({targets:[a,b],scaleX:1,duration:80,onComplete:()=>{opened=[];canClick=true;}});
-                  }}),400);
+    });
+
+    const timerEvent = setInterval(() => {
+      timer++;
+      infoTemps.textContent = "Temps: " + timer + "s";
+    }, 1000);
+
+    let values = [];
+    for (let i = 1; i <= PAIRS; i++) values.push(i, i);
+    Phaser.Utils.Array.Shuffle(values);
+
+    for (let y = 0; y < ROWS; y++) {
+      for (let x = 0; x < COLS; x++) {
+        let idx = y * COLS + x;
+        if (idx >= values.length) break;
+        let val = values[idx];
+        let posX = startX + x * (cardW + gapW);
+        let posY = startY + y * (cardH + gapH);
+        let container = this.add.container(posX, posY);
+        let cardBack = scene.add.image(0, 0, 'back').setDisplaySize(cardW, cardH);
+        let cardFace = scene.add.image(0, 0, 'face' + val).setDisplaySize(cardW, cardH).setVisible(false);
+        container.add([cardBack, cardFace]);
+
+        container.setSize(cardW, cardH);
+        container.setInteractive();
+
+        container.cardValue = val;
+        container.flipped = false;
+        container.locked = false;
+        container.cardBack = cardBack;
+        container.cardFace = cardFace;
+
+        container.on('pointerdown', () => {
+          if (!canClick || container.flipped || container.locked) return;
+          canClick = false;
+          scene.tweens.add({
+            targets: container,
+            scaleX: 0,
+            duration: 120,
+            onComplete: () => {
+              container.cardBack.setVisible(false);
+              container.cardFace.setVisible(true);
+              scene.tweens.add({
+                targets: container,
+                scaleX: 1,
+                duration: 110,
+                onComplete: () => {
+                  container.flipped = true;
+                  opened.push(container);
+                  if (opened.length === 2) {
+                    moves++;
+                    infoCoups.textContent = 'Coups: ' + moves;
+                    const [c1, c2] = opened;
+                    if (c1.cardValue === c2.cardValue) {
+                      matchSound.play();
+                      c1.locked = c2.locked = true;
+                      matchedPairs++;
+                      scene.tweens.add({ targets: [c1, c2], scale: 1.12, yoyo: true, duration: 250 });
+                      if (matchedPairs === PAIRS) {
+                        clearInterval(timerEvent);
+                        winSound.play();
+                        overlay.setVisible(true);
+                        victoryBanner.setText(`Gagné ! 🎉\n${moves} coups, ${timer}s`);
+                        victoryBanner.setVisible(true);
+                        scene.tweens.add({ targets: victoryBanner, scale: 1.12, yoyo: true, duration: 320, repeat: 2 });
+                        canClick = false;
+                      }
+                      opened = [];
+                      setTimeout(() => { canClick = true; }, 180);
+                    } else {
+                      failSound.play();
+                      setTimeout(() => {
+                        scene.tweens.add({
+                          targets: [c1, c2],
+                          scaleX: 0,
+                          duration: 120,
+                          onComplete: () => {
+                            [c1, c2].forEach(c => {
+                              c.cardBack.setVisible(true);
+                              c.cardFace.setVisible(false);
+                              c.flipped = false;
+                            });
+                            scene.tweens.add({
+                              targets: [c1, c2],
+                              scaleX: 1,
+                              duration: 100,
+                              onComplete: () => {
+                                opened = [];
+                                canClick = true;
+                              }
+                            });
+                          }
+                        });
+                      }, 500);
+                    }
+                  } else {
+                    canClick = true;
+                  }
                 }
-              }else canClick=true;
-            }});
-          }});
+              });
+            }
+          });
         });
       }
-        document.getElementById('restart').onclick = ()=>{clearInterval(this.timerEvent);game.destroy(true);document.getElementById('game-container').innerHTML='';setTimeout(()=>{startGame();},40);}
-      }
     }
 
-    function startGame() {
-      document.getElementById('header').style.display='flex';
-      document.getElementById('game-container').innerHTML='';
-      setTimeout(()=>{game = new Phaser.Game({
-        parent:'game-container',
-        width:document.getElementById('game-container').clientWidth,
-        height:document.getElementById('game-container').clientHeight,
-        backgroundColor:'#243',
-        scene: [MemoryScene],
-        scale:{mode:Phaser.Scale.NONE,autoCenter:Phaser.Scale.CENTER_BOTH}
-      });},120);
+    const restartBtn = document.getElementById('restartBtn');
+    restartBtn.onclick = () => {
+      clearInterval(timerEvent);
+      game.destroy(true);
+      document.getElementById('game-parent').innerHTML = '';
+      setTimeout(() => {
+        game = new Phaser.Game(createConfig());
+      }, 20);
+    };
+  }
+
+  window.addEventListener('resize', () => {
+    if (game) {
+      game.destroy(true);
+      document.getElementById('game-parent').innerHTML = '';
+      setTimeout(() => {
+        game = new Phaser.Game(createConfig());
+      }, 20);
     }
-    window.onload=()=>{document.getElementById('header').style.display='flex';startGame();}
-    window.addEventListener('resize',()=>{if(game){game.destroy(true);document.getElementById('game-container').innerHTML='';setTimeout(()=>startGame(),150);}});
-  </script>
+  });
+
+  window.onload = () => {
+    game = new Phaser.Game(createConfig());
+  };
+</script>
 </body>
 </html>
