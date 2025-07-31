@@ -264,7 +264,15 @@ function startGame(nbPairs) {
   document.getElementById("accueil").style.display = "none";
   document.getElementById("header").style.display = "flex";
   document.getElementById("game-parent").innerHTML = '';
-  game = new Phaser.Game(createConfig(cols, rows, nbPairs));
+
+  // Délai 100ms avant création pour assurer layout fini
+  setTimeout(() => {
+    console.log("Démarrage Phaser, taille container:",
+                document.getElementById('game-parent').clientWidth,
+                document.getElementById('game-parent').clientHeight);
+
+    game = new Phaser.Game(createConfig(cols, rows, nbPairs));
+  }, 100);
 }
 
 document.querySelectorAll('.btn-niveau').forEach(btn => {
