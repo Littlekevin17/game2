@@ -40,8 +40,6 @@
       flex-shrink: 0;
     }
     #restartBtn, #fullscreenBtn {
-      margin: 0;
-      position: static;
       cursor: pointer;
       padding: 6px 14px;
       border-radius: 5px;
@@ -72,7 +70,7 @@
     #game-parent {
       position: absolute;
       left: 0; right: 0; bottom: 0;
-      top: 60px; /* sous le header */
+      top: 60px;
       width: 100vw;
       height: calc(100vh - 60px);
       max-width: 1100px;
@@ -108,8 +106,8 @@
 
 <script>
   const PAIRS = 5;
-  const COLS = 5; // 5 colonnes, logique pour 10 cartes
-  const ROWS = 2; // 2 lignes
+  const COLS = 5;    // 5 colonnes
+  const ROWS = 2;    // 2 lignes (5x2=10 cartes)
   const CARD_RATIO = 3 / 2;
   const CARD_GAP_RATIO = 0.03;
 
@@ -129,8 +127,8 @@
     }
     const gapW = CARD_GAP_RATIO * cardW;
     const gapH = CARD_GAP_RATIO * cardH;
-    const boardWidth = COLS * cardW + (COLS - 1) * gapW;
-    const boardHeight = ROWS * cardH + (ROWS - 1) * gapH;
+    const boardWidth = COLS * cardW + (COLS -1) * gapW;
+    const boardHeight = ROWS * cardH + (ROWS -1) * gapH;
     const startX = (w - boardWidth) / 2 + cardW / 2;
     const startY = (h - boardHeight) / 2 + cardH / 2;
     return { w, h, cardW, cardH, gapW, gapH, startX, startY };
@@ -210,7 +208,7 @@
         let val = values[idx];
         let posX = startX + x * (cardW + gapW);
         let posY = startY + y * (cardH + gapH);
-        let container = this.add.container(posX, posY);
+        let container = scene.add.container(posX, posY);
 
         let cardBack = scene.add.image(0, 0, 'back').setDisplaySize(cardW, cardH);
         let cardFace = scene.add.image(0, 0, 'face' + val).setDisplaySize(cardW, cardH).setVisible(false);
@@ -326,14 +324,14 @@
     document.getElementById('restartBtn').onclick = () => {
       clearInterval(timerEvent);
       game.destroy(true);
-      document.getElementById('game-container').innerHTML = '';
+      document.getElementById('game-parent').innerHTML = '';
       setTimeout(() => {
         game = new Phaser.Game(createConfig());
       }, 20);
     };
   }
 
-  // Plein écran toggle (idem version 20 paires)
+  // Plein écran toggle
   document.getElementById('fullscreenBtn').onclick = () => {
     if (
       !document.fullscreenElement &&
@@ -368,7 +366,7 @@
   window.addEventListener('resize', () => {
     if (game) {
       game.destroy(true);
-      document.getElementById('game-container').innerHTML = '';
+      document.getElementById('game-parent').innerHTML = '';
       setTimeout(() => {
         game = new Phaser.Game(createConfig());
       }, 20);
@@ -378,7 +376,7 @@
   window.onload = () => {
     game = new Phaser.Game(createConfig());
   };
-  </script>
+</script>
 
 </body>
 </html>
