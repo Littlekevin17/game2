@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Memory F1 - Debug complet</title>
+  <title>Memory F1 - Sélection et Responsive corrigé</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
   <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
   <style>
@@ -60,7 +60,7 @@
       z-index: 10;
       left: 0; top: 0;
       width: 100vw; height: 100vh;
-      background: linear-gradient(135deg, #031d3dcc 40%, #15312acc 100%);
+      background: linear-gradient(135deg,#031d3dcc 40%,#15312acc 100%);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -71,10 +71,10 @@
     }
     #titre-memory {
       color: #f4c20d;
-      font-size: 3rem;
+      font-size: 3.2rem;
       font-family: 'Bebas Neue', 'Oswald', Impact, sans-serif;
       letter-spacing: 3px;
-      margin-bottom: 20px;
+      margin-bottom: 24px;
       text-shadow: 2px 2px 8px #2229, 0 3px #1f4a75;
     }
     #choix-niveau {
@@ -128,6 +128,7 @@
 </head>
 <body>
 
+<!-- Écran d’accueil -->
 <div id="accueil">
   <div id="titre-memory">Memory F1</div>
   <div id="choix-niveau">
@@ -142,18 +143,21 @@
   </p>
 </div>
 
+<!-- Barre d’informations et bouton rejouer (initialement masquée) -->
 <div id="header">
   <div id="infoCoups">Coups: 0</div>
   <button id="restartBtn">Rejouer</button>
   <div id="infoTemps">Temps: 0s</div>
 </div>
 
+<!-- Conteneur du jeu Phaser -->
 <div id="game-parent"></div>
 
 <script>
-  let PAIRS = 20, COLS = 8, ROWS = 5, CARD_RATIO = 3 / 2, CARD_GAP_RATIO = 0.03;
+  let PAIRS = 20, COLS = 8, ROWS = 5, CARD_RATIO = 3/2, CARD_GAP_RATIO = 0.03;
   let game;
 
+  // Détermine un layout adaptatif selon hauteur du viewport
   function getPlateau(nbPairs) {
     const parentHeight = document.getElementById('game-parent').clientHeight;
     let total = nbPairs * 2;
@@ -164,16 +168,19 @@
       rows = Math.ceil(total / cols);
     } else {
       cols = total <= 16 ? 4 :
-        total <= 24 ? 5 :
-        total <= 30 ? 6 :
-        total <= 36 ? 6 :
-        total <= 40 ? 8 : 8;
+             total <= 24 ? 5 :
+             total <= 30 ? 6 :
+             total <= 36 ? 6 :
+             total <= 40 ? 8 : 8;
       rows = Math.ceil(total / cols);
-      if (cols * rows > total) cols = Math.ceil(total / rows);
+      if (cols * rows > total) {
+        cols = Math.ceil(total / rows);
+      }
     }
     return { cols, rows };
   }
 
+  // Calcule les positions et tailles affichage
   function getSizes(cols, rows) {
     const parent = document.getElementById('game-parent');
     const w = parent.clientWidth, h = parent.clientHeight;
@@ -195,6 +202,7 @@
     return { w, h, cardW, cardH, gapW, gapH, startX, startY };
   }
 
+  // Configuration Phaser avec passage des paramètres via data
   function createConfig(cols, rows, nbPairs) {
     const parent = document.getElementById('game-parent');
     return {
@@ -213,14 +221,16 @@
         create: create,
       },
       scale: { mode: Phaser.Scale.NONE, autoCenter: Phaser.Scale.CENTER_BOTH },
+      data: { cols: cols, rows: rows, nbPairs: nbPairs }
     };
   }
 
+  // Préchargement avec logs debug
   function preload() {
-    console.log('[MEMORY-F1] preload : nbPairs=', this.nbPairs);
+    console.log('[MEMORY-F1] preload avec nbPairs =', this.nbPairs);
     this.load.image('back', 'assets/carte-dos.jpg');
     for (let i = 1; i <= this.nbPairs; i++) {
-      console.log(`[MEMORY-F1] preload : chargement face${i} -> assets/${i}.jpg`);
+      console.log('[MEMORY-F1] load face' + i + ' = assets/' + i + '.jpg');
       this.load.image('face' + i, 'assets/' + i + '.jpg');
     }
     this.load.audio('matchSound', 'sounds/match.mp3');
@@ -228,12 +238,15 @@
     this.load.audio('winSound', 'sounds/win.mp3');
   }
 
+  // Création du jeu avec logs et console pour chaque carte
   function create() {
-    const scene = this, cols = this.cols, rows = this.rows, nbPairs = this.nbPairs;
+    const scene = this;
+    const cols = this.cols, rows = this.rows, nbPairs = this.nbPairs;
     const { cardW, cardH, gapW, gapH, startX, startY, w, h } = getSizes(cols, rows);
 
-    console.log(`[MEMORY-F1] create : cols=${cols}, rows=${rows}, nbPairs=${nbPairs}`);
-    console.log(`[MEMORY-F1] conteneur taille w=${w}px h=${h}px, carte taille carteW=${cardW}px carteH=${cardH}px`);
+    console.log('[MEMORY-F1] create cols, rows, nbPairs:', cols, rows, nbPairs);
+    console.log('[MEMORY-F1] conteneur sizes', w, h);
+    console.log('[MEMORY-F1] carte taille:', cardW, cardH);
 
     document.getElementById('header').style.display = 'flex';
 
@@ -277,7 +290,8 @@
         let val = values[idx];
         let px = startX + x * (cardW + gapW);
         let py = startY + y * (cardH + gapH);
-        console.log(`[MEMORY-F1] Création carte idx=${idx} val=${val} pos=(${px.toFixed(1)},${py.toFixed(1)}) taille=(${cardW.toFixed(1)}x${cardH.toFixed(1)})`);
+        console.log(`[MEMORY-F1] Création carte idx ${idx} val ${val} pos (${px.toFixed(1)},${py.toFixed(1)}) taille (${cardW.toFixed(1)}x${cardH.toFixed(1)})`);
+
         let container = this.add.container(px, py);
         let cardBack = scene.add.image(0, 0, 'back').setDisplaySize(cardW, cardH);
         let cardFace = scene.add.image(0, 0, 'face' + val).setDisplaySize(cardW, cardH).setVisible(false);
