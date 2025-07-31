@@ -1,23 +1,94 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+  <meta charset="UTF-8" />
   <title>Memory F1 - Accueil</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
   <style>
-    body { background:#2d3750; color:#fff; font-family:sans-serif; display:flex; flex-direction:column; height:100vh; justify-content:center; align-items:center; margin:0;}
-    h1 { font-size: 2.5rem; color:#f4c20d; margin-bottom:1.3em;}
-    nav { display:flex; flex-direction:column; gap: 16px;}
-    .niveau { background: #00a6ff; color:#fff; border-radius:8px; border:none; font-size:1.3rem; padding:16px 34px; cursor:pointer; font-weight: bold; }
-    .niveau:hover { background: #007fb3; }
+    /* Reset et styles de base */
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      background: linear-gradient(135deg, #031d3dcc 40%, #15312acc 100%);
+      color: #fff;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      min-height: 100vh;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      text-align: center;
+      user-select: none;
+    }
+    h1 {
+      font-size: 3rem;
+      color: #f4c20d;
+      margin-bottom: 1.5rem;
+      letter-spacing: 3px;
+      text-shadow: 2px 2px 8px #0008;
+      font-family: 'Bebas Neue', cursive, Arial, sans-serif;
+    }
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+      max-width: 480px;
+      width: 100%;
+    }
+    nav a {
+      flex: 1 1 40%;
+      max-width: 180px;
+      text-decoration: none;
+    }
+    button.niveau {
+      width: 100%;
+      padding: 15px 0;
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #1b1b1b;
+      background: linear-gradient(90deg, #00c3ff 0%, #ffc300 120%);
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+      transition: background-color 0.3s ease, color 0.3s ease;
+      user-select: none;
+    }
+    button.niveau:hover,
+    button.niveau:focus {
+      background: linear-gradient(90deg, #008cdb 0%, #c2a000 120%);
+      color: #fff;
+      outline: none;
+      box-shadow: 0 0 15px #ffc300;
+    }
+    /* Responsive */
+    @media (max-width: 480px) {
+      h1 {
+        font-size: 2.2rem;
+      }
+      nav a {
+        flex: 1 1 100%;
+        max-width: none;
+      }
+      button.niveau {
+        font-size: 1.15rem;
+        padding: 12px 0;
+        border-radius: 10px;
+      }
+    }
   </style>
 </head>
 <body>
   <h1>Memory F1</h1>
   <nav>
-    <a href="memory-game-lvl1.html"><button class="niveau">Facile (5 paires)</button></a>
-    <a href="memory-game-lvl2.html"><button class="niveau">Moyen (10 paires)</button></a>
-    <a href="memory-game-lvl3.html"><button class="niveau">Difficile (15 paires)</button></a>
-    <a href="memory-game-lvl4.html"><button class="niveau">Très difficile (20 paires)</button></a>
+    <a href="memory-game-lvl1.html"><button class="niveau" type="button">Facile (5 paires)</button></a>
+    <a href="memory-game-lvl2.html"><button class="niveau" type="button">Moyen (10 paires)</button></a>
+    <a href="memory-game-lvl3.html"><button class="niveau" type="button">Difficile (15 paires)</button></a>
+    <a href="memory-game-lvl4.html"><button class="niveau" type="button">Très difficile (20 paires)</button></a>
   </nav>
 </body>
 </html>
