@@ -2,103 +2,17 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Memory F1 - 20 Paires - Plein écran</title>
+  <title>Memory F1 - 20 Paires</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <link rel="stylesheet" href="css/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
-  <style>
-    body {
-      margin: 0;
-      background: #243;
-      color: #fff;
-      font-family: sans-serif;
-      user-select: none;
-      overflow: hidden;
-    }
-    #header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 6px 12px;
-      background: #111c;
-      color: #fff;
-      font-size: 16px;
-      height: 40px;
-      max-width: 1100px;
-      margin: 10px auto 0;
-      border-radius: 5px;
-      box-sizing: border-box;
-    }
-    #header > div {
-      min-width: 75px;
-      text-align: center;
-      flex-shrink: 0;
-    }
-    .header-center {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex-shrink: 0;
-    }
-    #restartBtn, #fullscreenBtn {
-      margin: 0;
-      position: static;
-      cursor: pointer;
-      padding: 6px 14px;
-      border-radius: 5px;
-      border: none;
-      background: #0a74da;
-      color: white;
-      font-weight: bold;
-      font-size: 18px;
-      box-shadow: 0 2px 6px #111a;
-      user-select: none;
-      transition: background 0.2s;
-    }
-    #fullscreenBtn {
-      font-size: 20px;
-      padding: 6px 10px 6px 10px;
-      margin-left: 3px;
-      background: #0a5ba8;
-      min-width: 36px;
-      width: 36px;
-      height: 40px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    #restartBtn:hover, #fullscreenBtn:hover {
-      background: #09508c;
-    }
-    #game-parent {
-      position: absolute;
-      left: 0; right: 0; bottom: 0;
-      top: 60px; /* sous le header */
-      width: 100vw;
-      height: calc(100vh - 60px);
-      max-width: 1100px;
-      margin: 0 auto;
-      background: #222;
-    }
-    canvas {
-      width: 100% !important;
-      height: 100% !important;
-      display: block;
-      image-rendering: crisp-edges;
-      user-select: none;
-    }
-    @media (max-width: 700px) {
-      #header { font-size: 13px; height: 36px; padding: 3px 5px; }
-      #restartBtn, #fullscreenBtn { font-size: 15px; padding: 4px 7px; height: 32px; }
-      .header-center { gap: 4px; }
-    }
-  </style>
 </head>
 <body>
 
 <div id="header">
   <div id="infoCoups">Coups: 0</div>
   <div class="header-center">
-    <button id="restartBtn">Rejouer</button>
+    <button id="restartBtn" title="Rejouer">Rejouer</button>
     <button id="fullscreenBtn" title="Plein écran">🔲</button>
   </div>
   <div id="infoTemps">Temps: 0s</div>
@@ -106,231 +20,93 @@
 
 <div id="game-parent"></div>
 
+<script src="js/memory-game.js"></script>
 <script>
+  // Configuration du niveau 20 paires, 8 colonnes x 5 lignes
   const PAIRS = 20;
   const COLS = 8;
   const ROWS = 5;
-  const CARD_RATIO = 3 / 2;
-  const CARD_GAP_RATIO = 0.03;
 
-  let game, matchSound, failSound, winSound;
-
-  function getSizes() {
-    const parent = document.getElementById('game-parent');
-    const w = parent.clientWidth, h = parent.clientHeight;
-    let totalGapW = (COLS - 1) * CARD_GAP_RATIO * w;
-    let totalGapH = (ROWS - 1) * CARD_GAP_RATIO * h;
-    let cardW = (w - totalGapW) / COLS;
-    let cardH = cardW / CARD_RATIO;
-    const totalCardHeight = ROWS * cardH + totalGapH;
-    if (totalCardHeight > h) {
-      cardH = (h - totalGapH) / ROWS;
-      cardW = cardH * CARD_RATIO;
-    }
-    const gapW = CARD_GAP_RATIO * cardW;
-    const gapH = CARD_GAP_RATIO * cardH;
-    const boardWidth = COLS * cardW + (COLS - 1) * gapW;
-    const boardHeight = ROWS * cardH + (ROWS - 1) * gapH;
-    const startX = (w - boardWidth) / 2 + cardW / 2;
-    const startY = (h - boardHeight) / 2 + cardH / 2;
-    return { w, h, cardW, cardH, gapW, gapH, startX, startY };
-  }
-
+  // Crée la config Phaser en passant les paramètres niveau
   function createConfig() {
+    const parent = document.getElementById('game-parent');
     return {
       type: Phaser.AUTO,
       parent: 'game-parent',
-      width: document.getElementById('game-parent').clientWidth,
-      height: document.getElementById('game-parent').clientHeight,
+      width: parent.clientWidth,
+      height: parent.clientHeight,
       backgroundColor: '#243',
-      scene: { preload, create },
+      scene: [MemoryScene],
       scale: { mode: Phaser.Scale.NONE, autoCenter: Phaser.Scale.CENTER_BOTH }
     };
   }
 
-  function preload() {
-    this.load.image('back', 'assets/carte-dos.jpg');
-    for (let i = 1; i <= PAIRS; i++) {
-      this.load.image('face' + i, 'assets/' + i + '.jpg');
-    }
-    this.load.audio('matchSound', 'sounds/match.mp3');
-    this.load.audio('failSound', 'sounds/fail.mp3');
-    this.load.audio('winSound', 'sounds/win.mp3');
-  }
+  // Instance globale du jeu
+  let game;
 
-  function create() {
-    const scene = this;
-    const { cardW, cardH, gapW, gapH, startX, startY, w, h } = getSizes();
-
-    let moves = 0;
-    let matchedPairs = 0;
-    let timer = 0;
-    let opened = [];
-    let canClick = true;
-
-    // Header
-    const infoCoups = document.getElementById('infoCoups');
-    const infoTemps = document.getElementById('infoTemps');
-    infoCoups.textContent = 'Coups: 0';
-    infoTemps.textContent = 'Temps: 0s';
-
-    matchSound = this.sound.add('matchSound');
-    failSound = this.sound.add('failSound');
-    winSound = this.sound.add('winSound');
-
-    const overlay = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.5)
-      .setDepth(20)
-      .setVisible(false);
-    const victoryBanner = this.add.text(w / 2, h / 2, '', {
-      font: '40px Arial',
-      fill: '#0f0',
-      backgroundColor: '#222d',
-      padding: { left: 24, right: 24, top: 16, bottom: 16 },
-      align: 'center',
-      wordWrap: { width: w * 0.8 }
-    }).setOrigin(0.5).setDepth(21).setVisible(false);
-
-    this.input.once('pointerdown', () => {
-      if (this.sound.context.state === 'suspended') {
-        this.sound.context.resume();
-      }
-    });
-
-    const timerEvent = setInterval(() => {
-      timer++;
-      infoTemps.textContent = "Temps: " + timer + "s";
-    }, 1000);
-
-    let values = [];
-    for (let i = 1; i <= PAIRS; i++) values.push(i, i);
-    Phaser.Utils.Array.Shuffle(values);
-
-    for (let y = 0; y < ROWS; y++) {
-      for (let x = 0; x < COLS; x++) {
-        let idx = y * COLS + x;
-        if (idx >= values.length) break;
-        let val = values[idx];
-        let posX = startX + x * (cardW + gapW);
-        let posY = startY + y * (cardH + gapH);
-        let container = this.add.container(posX, posY);
-        let cardBack = scene.add.image(0, 0, 'back').setDisplaySize(cardW, cardH);
-        let cardFace = scene.add.image(0, 0, 'face' + val).setDisplaySize(cardW, cardH).setVisible(false);
-        container.add([cardBack, cardFace]);
-        container.setSize(cardW, cardH);
-        container.setInteractive();
-        container.cardValue = val;
-        container.flipped = false;
-        container.locked = false;
-        container.cardBack = cardBack;
-        container.cardFace = cardFace;
-
-        container.on('pointerdown', function () {
-          if (!canClick || container.flipped || container.locked) return;
-          canClick = false;
-          scene.tweens.add({
-            targets: container,
-            scaleX: 0,
-            duration: 120,
-            onComplete: () => {
-              container.cardBack.setVisible(false);
-              container.cardFace.setVisible(true);
-              scene.tweens.add({
-                targets: container,
-                scaleX: 1,
-                duration: 110,
-                onComplete: () => {
-                  container.flipped = true;
-                  opened.push(container);
-                  if (opened.length === 2) {
-                    moves++;
-                    infoCoups.textContent = 'Coups: ' + moves;
-                    const [c1, c2] = opened;
-                    if (c1.cardValue === c2.cardValue) {
-                      matchSound.play();
-                      c1.locked = c2.locked = true;
-                      matchedPairs++;
-                      scene.tweens.add({ targets: [c1, c2], scale: 1.12, yoyo: true, duration: 250 });
-                      if (matchedPairs === PAIRS) {
-                        clearInterval(timerEvent);
-                        winSound.play();
-                        overlay.setVisible(true);
-                        victoryBanner.setText(`Gagné ! 🎉\n${moves} coups, ${timer}s`);
-                        victoryBanner.setVisible(true);
-                        scene.tweens.add({ targets: victoryBanner, scale: 1.12, yoyo: true, duration: 320, repeat: 2 });
-                        canClick = false;
-                      }
-                      opened = [];
-                      setTimeout(() => { canClick = true; }, 180);
-                    } else {
-                      failSound.play();
-                      setTimeout(() => {
-                        scene.tweens.add({
-                          targets: [c1, c2],
-                          scaleX: 0,
-                          duration: 120,
-                          onComplete: () => {
-                            [c1, c2].forEach(c => {
-                              c.cardBack.setVisible(true);
-                              c.cardFace.setVisible(false);
-                              c.flipped = false;
-                            });
-                            scene.tweens.add({
-                              targets: [c1, c2],
-                              scaleX: 1,
-                              duration: 100,
-                              onComplete: () => {
-                                opened = [];
-                                canClick = true;
-                              }
-                            });
-                          }
-                        });
-                      }, 500);
-                    }
-                  } else {
-                    canClick = true;
-                  }
-                }
-              });
-            }
-          });
-        });
-      }
-    }
-
-    // Bouton Rejouer
-    document.getElementById('restartBtn').onclick = () => {
-      clearInterval(timerEvent);
-      game.destroy(true);
-      document.getElementById('game-parent').innerHTML = '';
-      setTimeout(() => {
-        game = new Phaser.Game(createConfig());
-      }, 20);
-    };
-  }
-
-  // Plein écran
-  document.getElementById('fullscreenBtn').onclick = () => {
-    const elem = document.documentElement;
-    if (elem.requestFullscreen) elem.requestFullscreen();
-    else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
-    else if (elem.mozRequestFullScreen) elem.mozRequestFullScreen();
-    else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
-  };
-
-  window.addEventListener('resize', () => {
+  function startGame() {
     if (game) {
       game.destroy(true);
       document.getElementById('game-parent').innerHTML = '';
-      setTimeout(() => {
-        game = new Phaser.Game(createConfig());
-      }, 20);
+    }
+    game = new Phaser.Game(createConfig());
+    // Données à passer à la scène par événement custom
+    game.events.once('ready', () => {
+      game.scene.scenes[0].initGame(PAIRS, COLS, ROWS);
+    });
+  }
+
+  window.onload = () => {
+    startGame(); 
+
+    // Bouton plein écran avec toggle complet
+    const fsBtn = document.getElementById('fullscreenBtn');
+    fsBtn.onclick = () => {
+      if (!document.fullscreenElement) {
+        // Demande plein écran
+        document.documentElement.requestFullscreen?.()
+        || document.documentElement.webkitRequestFullscreen?.()
+        || document.documentElement.mozRequestFullScreen?.()
+        || document.documentElement.msRequestFullscreen?.();
+      } else {
+        // Sortie du plein écran
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        } else if(window.webkitExitFullscreen) {
+          window.webkitExitFullscreen();
+        } else if(window.mozCancelFullScreen) {
+          window.mozCancelFullScreen();
+        } else if(window.msExitFullscreen) {
+          window.msExitFullscreen();
+        }
+      }
+    };
+
+    // Bouton rejouer — lance le jeu
+    document.getElementById('restartBtn').onclick = () => {
+      startGame();
+    };
+  };
+
+  // Optional : repositionner ou resize le jeu lors du changement d'écran (fullscreen etc)
+  window.addEventListener('resize', () => {
+    if (game) {
+      game.scale.resize(document.getElementById('game-parent').clientWidth, document.getElementById('game-parent').clientHeight);
+      game.scene.scenes[0].resizeGame();
     }
   });
 
-  window.onload = () => {
-    game = new Phaser.Game(createConfig());
-  };
+  // Support pour changer le titre du bouton plein-écran dynamiquement :  
+  document.addEventListener('fullscreenchange', () => {
+    const fsBtn = document.getElementById('fullscreenBtn');
+    if (document.fullscreenElement) {
+      fsBtn.title = 'Quitter le plein écran';
+      fsBtn.textContent = '❎';  // Changer icône en croix par exemple
+    } else {
+      fsBtn.title = 'Plein écran';
+      fsBtn.textContent = '🔲';
+    }
+  });
 </script>
 </body>
 </html>
