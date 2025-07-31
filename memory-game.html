@@ -2,31 +2,138 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
-  <title>Memory F1 - Version stable finale</title>
+  <title>Memory F1 - Jeu complet opérationnel</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
   <style>
-    html, body { margin: 0; padding: 0; background: #243; color: #fff; font-family: sans-serif; user-select:none; overflow: hidden; height:100%; }
-    #accueil { position: absolute; top: 0; bottom:0; left:0; right:0;
-      background: linear-gradient(135deg,#031d3dcc 40%,#15312acc 100%);
-      display: flex; flex-direction: column; justify-content: center; align-items: center; text-align:center; padding: 0 12px; box-sizing: border-box; }
-    #accueil h1 { font-family: 'Bebas Neue', cursive; font-size: 3rem; color: #f4c20d; text-shadow: 2px 2px 8px #111; margin: 0 0 1rem 0; }
-    #accueil .buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; max-width: 500px; width: 100%; }
-    #accueil button { flex: 1 1 140px; min-width: 120px; background: linear-gradient(90deg,#00c3ff 0%,#ffc300 120%); border: none; border-radius: 8px; color: #202020; font-weight: bold; font-size: 1.3rem; padding: 14px 4px; cursor: pointer; box-shadow: 0 2px 8px #0007; user-select:none; transition: background 0.3s ease; }
-    #accueil button:hover { background: linear-gradient(90deg,#0092bc 0%,#c28800 120%); }
-    #accueil p { margin-top: 1.5rem; font-size: 1rem; color: #eee }
-    #header { display:none; position: fixed; top:0; left:0; right:0; height: 50px; background: #111a; color: #eee; font-size: 1.1rem; line-height: 50px; z-index: 999; font-weight: bold; align-items: center; justify-content: space-between; padding: 0 12px; box-sizing: border-box; }
-    #header, #header button { display: flex; }
-    #header div { min-width: 100px; text-align: center; }
-    #header button { background: #00a6ff; border: none; border-radius: 5px; color: white; font-weight: bold; cursor: pointer; padding: 8px 18px; font-size: 1rem; }
-    #header button:hover { background: #007fb3; }
-    #game-container { position: fixed; top: 50px; left: 0; right:0; bottom:0; background: #222; margin: auto; overflow: hidden; }
-    canvas { display: block; user-select:none; }
-    @media (max-width: 650px) { #accueil h1 { font-size: 2.2rem; } .buttons button { font-size:1rem; min-width:110px; } }
+    /* === Styles globaux et reset === */
+    html, body {
+      margin: 0; padding: 0;
+      height: 100%;
+      background: #243;
+      color: #fff;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      user-select: none;
+      overflow: hidden;
+    }
+    /* === Accueil === */
+    #accueil {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(135deg, #031d3dcc 40%, #15312acc 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      box-sizing: border-box;
+      text-align: center;
+      z-index: 1000;
+    }
+    #accueil h1 {
+      font-family: 'Bebas Neue', cursive;
+      font-size: 4rem;
+      color: #f4c20d;
+      text-shadow: 2px 2px 8px #111;
+      margin: 0 0 20px 0;
+      user-select: none;
+    }
+    #accueil .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      max-width: 480px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    #accueil button {
+      flex: 1 1 140px;
+      min-width: 140px;
+      padding: 14px 0;
+      font-size: 1.3rem;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(90deg, #00c3ff 0%, #ffc300 120%);
+      color: #202020;
+      box-shadow: 0 2px 8px #000a;
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.3s ease;
+    }
+    #accueil button:hover {
+      background: linear-gradient(90deg, #0094d0 0%, #c28800 120%);
+      color: #fff;
+    }
+    #accueil p {
+      font-size: 1.1rem;
+      max-width: 480px;
+      color: #eee;
+      user-select: none;
+    }
+    @media (max-width: 600px) {
+      #accueil h1 {
+        font-size: 3rem;
+      }
+      #accueil button {
+        flex: 1 1 100%;
+        min-width: auto;
+      }
+    }
+    /* === Barre de stats === */
+    #header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 50px;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      color: #eee;
+      font-size: 1.1rem;
+      line-height: 50px;
+      z-index: 999;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 15px;
+      box-sizing: border-box;
+      font-weight: bold;
+      user-select: none;
+    }
+    #header div {
+      min-width: 110px;
+      text-align: center;
+    }
+    #header button {
+      padding: 6px 18px;
+      border: none;
+      border-radius: 5px;
+      background: #00a2ff;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.3s ease;
+    }
+    #header button:hover {
+      background: #0077bb;
+    }
+    /* === Container Phaser === */
+    #game-container {
+      position: fixed;
+      top: 50px; bottom: 0; left: 0; right: 0;
+      background: #222;
+      margin: auto;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+      user-select: none;
+    }
   </style>
 </head>
 <body>
-  <div id="accueil">
+  <!-- Accueil -->
+  <section id="accueil">
     <h1>Memory F1</h1>
     <div class="buttons">
       <button data-pairs="5">Facile (5 paires)</button>
@@ -34,131 +141,320 @@
       <button data-pairs="15">Difficile (15 paires)</button>
       <button data-pairs="20">Très difficile (20 paires)</button>
     </div>
-    <p>Trouvez toutes les paires aussi vite que possible !</p>
-  </div>
-  <div id="header" style="display:none;">
-    <div id="moves">Coups: 0</div>
+    <p>Choisissez un niveau pour commencer la partie.</p>
+  </section>
+  <!-- Barre de stats -->
+  <section id="header">
+    <div id="moves">Coups : 0</div>
     <button id="restart">Rejouer</button>
-    <div id="timer">Temps: 0s</div>
-  </div>
-  <div id="game-container"></div>
-<script>
-const CARD_RATIO = 3/2, CARD_GAP_RATIO = 0.03;
-let game, currentPairs=0, cols=0, rows=0;
+    <div id="timer">Temps : 0s</div>
+  </section>
+  <!-- Phaser game container -->
+  <section id="game-container"></section>
 
-function getPlateau(nbPairs) {
-  const h = document.getElementById('game-container').clientHeight || window.innerHeight-50;
-  const total = nbPairs*2;
-  let c,r;
-  if (h < 350) { c=Math.min(10,total); r=Math.ceil(total/c);}
-  else { c=total<=16?4:total<=24?5:total<=30?6:total<=36?6:8; r=Math.ceil(total/c); }
-  return {cols:c, rows:r};
-}
-function getSizes(cols, rows) {
-  const parent = document.getElementById('game-container'), w=parent.clientWidth, h=parent.clientHeight;
-  let totalGapW = (cols-1)*CARD_GAP_RATIO*w, totalGapH= (rows-1)*CARD_GAP_RATIO*h, cardW=(w-totalGapW)/cols, cardH=cardW/CARD_RATIO;
-  if(rows*cardH+totalGapH > h) { cardH=(h-totalGapH)/rows; cardW=cardH*CARD_RATIO;}
-  const gapW= CARD_GAP_RATIO*cardW, gapH= CARD_GAP_RATIO*cardH, boardW= cols*cardW+(cols-1)*gapW, boardH=rows*cardH+(rows-1)*gapH;
-  const startX= (w-boardW)/2+cardW/2, startY= (h-boardH)/2+cardH/2;
-  return {cardW, cardH, gapW, gapH, startX, startY, w, h};
-}
+  <script>
+    const CARD_RATIO = 3 / 2;
+    const CARD_GAP_RATIO = 0.03;
 
-class MemoryScene extends Phaser.Scene {
-  init(data) { this.pairs=data.pairs; this.cols=data.cols; this.rows=data.rows; }
-  preload() {
-    this.load.image('back', 'assets/carte-dos.jpg');
-    for(let i=1;i<=this.pairs;i++) this.load.image('face'+i, 'assets/'+i+'.jpg');
-    this.load.audio('match', 'sounds/match.mp3');
-    this.load.audio('fail', 'sounds/fail.mp3');
-    this.load.audio('win', 'sounds/win.mp3');
-  }
-  create() {
-    const {cardW, cardH, gapW, gapH, startX, startY, w, h}=getSizes(this.cols, this.rows);
-    this.moves=0; this.matched=0; this.opened=[]; this.canClick=true; this.timer=0;
-    document.getElementById('header').style.display='flex';
-    document.getElementById('moves').textContent='Coups: 0'; document.getElementById('timer').textContent='Temps: 0s';
-    this.matchSound=this.sound.add('match'); this.failSound=this.sound.add('fail'); this.winSound=this.sound.add('win');
-    this.overlay=this.add.rectangle(w/2,h/2,w,h,0x000000,0.5).setDepth(10).setVisible(false);
-    this.victoryText=this.add.text(w/2,h/2,'',{fontSize:'38px', color:'#0f0', backgroundColor:'#222d',padding:{x:16,y:10},align:'center',wordWrap:{width:w*0.8}}).setOrigin(0.5).setDepth(11).setVisible(false);
-    if(this.timerEvent) clearInterval(this.timerEvent);
-    this.timerEvent = setInterval(()=>{ this.timer++; document.getElementById('timer').textContent='Temps: '+this.timer+'s'; },1000);
+    let game = null;
+    let currentPairs = 0;
+    let currentCols = 0;
+    let currentRows = 0;
 
-    this.input.once('pointerdown',()=>{ if(this.sound.context.state==='suspended') this.sound.context.resume(); });
+    // Calcule cols et rows adaptés en fonction du nombre de paires et hauteur dispo
+    function getPlateau(nbPairs) {
+      const h = document.getElementById('game-container').clientHeight || window.innerHeight - 50;
+      const totalCards = nbPairs * 2;
 
-    let vals=[]; for(let i=1;i<=this.pairs;i++) vals.push(i,i); Phaser.Utils.Array.Shuffle(vals);
-    for(let i=0;i<vals.length;i++){
-      const col=i%this.cols, row=Math.floor(i/this.cols);
-      const x=startX+col*(cardW+gapW), y=startY+row*(cardH+gapH);
-      const c = this.add.container(x,y), back=this.add.image(0,0,'back').setDisplaySize(cardW,cardH), face=this.add.image(0,0,'face'+vals[i]).setDisplaySize(cardW,cardH).setVisible(false);
-      c.add([back,face]); c.setInteractive(); c.setSize(cardW,cardH);
-      c.face=face; c.back=back; c.val=vals[i]; c.flipped=false; c.locked=false;
-      c.on('pointerdown',()=>{ if(!this.canClick || c.flipped || c.locked) return; this.canClick=false;
-        this.tweens.add({targets:c, scaleX:0, duration:100,
-          onComplete:()=>{c.back.setVisible(false);c.face.setVisible(true); this.tweens.add({targets:c,scaleX:1,duration:90,
-          onComplete:()=>{
-            c.flipped=true; this.opened.push(c);
-            if(this.opened.length===2){
-              this.moves++; document.getElementById('moves').textContent='Coups: '+this.moves;
-              const[a,b]=this.opened;
-              if(a.val===b.val){
-                this.matchSound.play(); a.locked=b.locked=true; this.matched++;
-                if(this.matched===this.pairs){ clearInterval(this.timerEvent); this.winSound.play();
-                  this.overlay.setVisible(true); this.victoryText.setText(`Bravo !\n${this.moves} coups\n${this.timer}s`); this.victoryText.setVisible(true);
-                } this.opened=[]; setTimeout(()=>this.canClick=true,120);
-              }
-              else {
-                this.failSound.play();
-                setTimeout(()=>this.tweens.add({targets:[a,b],scaleX:0,duration:100,onComplete:()=>{
-                  a.back.setVisible(true); b.back.setVisible(true); a.face.setVisible(false); b.face.setVisible(false); a.flipped=b.flipped=false;
-                  this.tweens.add({targets:[a,b],scaleX:1,duration:80,onComplete:()=>{this.opened=[]; this.canClick=true;}});
-                }}), 430);
-              }
-            } else this.canClick=true;
-          }});}
-        });
-      });
+      if (h < 350) {
+        const cols = Math.min(10, totalCards);
+        const rows = Math.ceil(totalCards / cols);
+        return { cols, rows };
+      } else {
+        let cols;
+        if (totalCards <= 16) cols = 4;
+        else if (totalCards <= 24) cols = 5;
+        else if (totalCards <= 30) cols = 6;
+        else if (totalCards <= 36) cols = 6;
+        else cols = 8;
+        let rows = Math.ceil(totalCards / cols);
+        return { cols, rows };
+      }
     }
-    document.getElementById('restart').onclick=()=>{ clearInterval(this.timerEvent); game.destroy(true); document.getElementById('game-container').innerHTML=''; setTimeout(()=>startGame(this.pairs),40);}
-  }
-}
 
-function startGame(nbPairs){
-  const {cols, rows}=getPlateau(nbPairs);
-  currentPairs=nbPairs; cols=cols; rows=rows;
-  document.getElementById('accueil').style.display='none';
-  document.getElementById('header').style.display='flex';
-  document.getElementById('game-container').innerHTML='';
-  setTimeout(()=>{
-    game = new Phaser.Game({
-      parent: 'game-container',
-      width: document.getElementById('game-container').clientWidth,
-      height: document.getElementById('game-container').clientHeight,
-      backgroundColor: "#243",
-      scene: [MemoryScene],
-      scale: {mode: Phaser.Scale.NONE, autoCenter: Phaser.Scale.CENTER_BOTH}
+    // Calcule positions et taille des cartes en fonction du container et grille
+    function getSizes(cols, rows) {
+      const container = document.getElementById('game-container');
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      const totalGapWidth = (cols - 1) * CARD_GAP_RATIO * width;
+      const totalGapHeight = (rows - 1) * CARD_GAP_RATIO * height;
+
+      let cardWidth = (width - totalGapWidth) / cols;
+      let cardHeight = cardWidth / CARD_RATIO;
+      if (rows * cardHeight + totalGapHeight > height) {
+        cardHeight = (height - totalGapHeight) / rows;
+        cardWidth = cardHeight * CARD_RATIO;
+      }
+
+      const gapWidth = cardWidth * CARD_GAP_RATIO;
+      const gapHeight = cardHeight * CARD_GAP_RATIO;
+
+      const boardWidth = cols * cardWidth + (cols - 1) * gapWidth;
+      const boardHeight = rows * cardHeight + (rows - 1) * gapHeight;
+
+      const startX = (width - boardWidth) / 2 + cardWidth / 2;
+      const startY = (height - boardHeight) / 2 + cardHeight / 2;
+
+      return { cardWidth, cardHeight, gapWidth, gapHeight, startX, startY, width, height };
+    }
+
+    class MemoryScene extends Phaser.Scene {
+      constructor() {
+        super({ key: 'memory' });
+        this.pairs = 0;
+        this.cols = 0;
+        this.rows = 0;
+      }
+
+      init(data) {
+        this.pairs = data.pairs;
+        this.cols = data.cols;
+        this.rows = data.rows;
+        console.log('MemoryScene:init data', data);
+      }
+
+      preload() {
+        console.log('MemoryScene: preload', this.pairs);
+        this.load.image('back', 'assets/carte-dos.jpg');
+        for (let i = 1; i <= this.pairs; i++) {
+          this.load.image('face' + i, 'assets/' + i + '.jpg');
+        }
+        this.load.audio('match', 'sounds/match.mp3');
+        this.load.audio('fail', 'sounds/fail.mp3');
+        this.load.audio('win', 'sounds/win.mp3');
+      }
+
+      create() {
+        const { cardWidth, cardHeight, gapWidth, gapHeight, startX, startY, width, height } = getSizes(this.cols, this.rows);
+        console.log('MemoryScene: create', this.pairs, this.cols, this.rows);
+
+        document.getElementById('header').style.display = 'flex';
+        this.moves = 0;
+        this.matchedCount = 0;
+        this.timer = 0;
+        this.openedCards = [];
+        this.canClick = true;
+
+        document.getElementById('moves').textContent = 'Coups : 0';
+        document.getElementById('timer').textContent = 'Temps : 0s';
+
+        this.matchSound = this.sound.add('match');
+        this.failSound = this.sound.add('fail');
+        this.winSound = this.sound.add('win');
+
+        this.overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.7)
+          .setDepth(10)
+          .setVisible(false);
+        this.victoryText = this.add.text(width / 2, height / 2, '', {
+          fontSize: '42px',
+          color: '#0f0',
+          align: 'center',
+          backgroundColor: 'rgba(0,0,0,0.7)',
+          padding: { x: 20, y: 10 },
+          wordWrap: { width: width * 0.8 },
+        }).setDepth(11).setOrigin(0.5).setVisible(false);
+
+        this.input.once('pointerdown', () => {
+          if (this.sound.context.state === 'suspended')
+            this.sound.context.resume();
+        });
+
+        if (this.timerEvent)
+          clearInterval(this.timerEvent);
+        this.timerEvent = setInterval(() => {
+          this.timer++;
+          document.getElementById('timer').textContent = `Temps : ${this.timer}s`;
+        }, 1000);
+
+        // Prepare cards values array + shuffle
+        const values = [];
+        for (let i = 1; i <= this.pairs; i++) {
+          values.push(i);
+          values.push(i);
+        }
+        Phaser.Utils.Array.Shuffle(values);
+
+        // Create cards
+        for (let i = 0; i < values.length; i++) {
+          const col = i % this.cols;
+          const row = Math.floor(i / this.cols);
+
+          const x = startX + col * (cardWidth + gapWidth);
+          const y = startY + row * (cardHeight + gapHeight);
+
+          const card = this.add.container(x, y);
+          const back = this.add.image(0, 0, 'back').setDisplaySize(cardWidth, cardHeight);
+          const face = this.add.image(0, 0, 'face' + values[i]).setDisplaySize(cardWidth, cardHeight).setVisible(false);
+          card.add([back, face]);
+          card.setSize(cardWidth, cardHeight);
+          card.setInteractive();
+          card.face = face;
+          card.back = back;
+          card.value = values[i];
+          card.flipped = false;
+          card.matched = false;
+
+          card.on('pointerdown', () => {
+            if (!this.canClick || card.flipped || card.matched) return;
+            this.canClick = false;
+            this.tweens.add({
+              targets: card,
+              scaleX: 0,
+              duration: 120,
+              onComplete: () => {
+                card.back.setVisible(false);
+                card.face.setVisible(true);
+                this.tweens.add({
+                  targets: card,
+                  scaleX: 1,
+                  duration: 100,
+                  onComplete: () => {
+                    card.flipped = true;
+                    this.openedCards.push(card);
+                    if (this.openedCards.length === 2) {
+                      this.moves++;
+                      document.getElementById('moves').textContent = `Coups : ${this.moves}`;
+                      const [first, second] = this.openedCards;
+                      if (first.value === second.value) {
+                        this.matchSound.play();
+                        first.matched = true;
+                        second.matched = true;
+                        this.matchedCount++;
+                        this.tweens.add({
+                          targets: [first, second],
+                          scale: 1.15,
+                          duration: 250,
+                          yoyo: true,
+                          ease: 'Power1',
+                        });
+                        if (this.matchedCount === this.pairs) {
+                          clearInterval(this.timerEvent);
+                          this.winSound.play();
+                          this.overlay.setVisible(true);
+                          this.victoryText.setText(`Félicitations !\nCoups : ${this.moves}\nTemps : ${this.timer}s`);
+                          this.victoryText.setVisible(true);
+                          this.tweens.add({
+                            targets: this.victoryText,
+                            scale: 1.2,
+                            yoyo: true,
+                            repeat: 4,
+                            duration: 300,
+                            ease: 'Sine.easeInOut',
+                          });
+                          this.canClick = false;
+                        }
+                        this.openedCards = [];
+                        this.time.delayedCall(350, () => { this.canClick = true; });
+                      } else {
+                        this.failSound.play();
+                        this.time.delayedCall(800, () => {
+                          this.tweens.add({
+                            targets: [first, second],
+                            scaleX: 0,
+                            duration: 150,
+                            onComplete: () => {
+                              first.back.setVisible(true);
+                              second.back.setVisible(true);
+                              first.face.setVisible(false);
+                              second.face.setVisible(false);
+                              first.flipped = false;
+                              second.flipped = false;
+                              this.tweens.add({
+                                targets: [first, second],
+                                scaleX: 1,
+                                duration: 150,
+                                onComplete: () => {
+                                  this.openedCards = [];
+                                  this.canClick = true;
+                                },
+                              });
+                            },
+                          });
+                        });
+                      }
+                    } else {
+                      this.canClick = true;
+                    }
+                  },
+                });
+              },
+            });
+          });
+        }
+
+        // Setup restart button
+        document.getElementById('restart').onclick = () => {
+          if (game) game.destroy(true);
+          document.getElementById('game-container').innerHTML = '';
+          this.overlay.setVisible(false);
+          this.victoryText.setVisible(false);
+          this.canClick = false;
+          setTimeout(() => startGame(currentPairs), 50);
+        };
+      }
+    }
+
+    function startGame(numPairs) {
+      currentPairs = numPairs;
+      const { cols, rows } = getPlateau(numPairs);
+      console.info(`Lancement jeu: ${numPairs} paires, ${cols} cols x ${rows} rows`);
+      document.getElementById('accueil').style.display = 'none';
+      document.getElementById('header').style.display = 'flex';
+      document.getElementById('game-container').innerHTML = '';
+      setTimeout(() => {
+        game = new Phaser.Game({
+          type: Phaser.AUTO,
+          parent: 'game-container',
+          width: document.getElementById('game-container').clientWidth,
+          height: document.getElementById('game-container').clientHeight,
+          backgroundColor: '#243',
+          scene: [MemoryScene],
+          scale: { mode: Phaser.Scale.NONE, autoCenter: Phaser.Scale.CENTER_BOTH },
+          physics: { default: 'arcade' },
+          pack: { files: [] },
+        });
+
+        setTimeout(() => {
+          game.scene.start('memory', { pairs: numPairs, cols: cols, rows: rows });
+        }, 100);
+      }, 150);
+    }
+
+    // Event handlers des boutons d’accueil
+    document.querySelectorAll('#accueil .buttons button').forEach(btn => {
+      btn.onclick = () => {
+        const pairs = parseInt(btn.dataset.pairs, 10);
+        if (!isNaN(pairs)) {
+          startGame(pairs);
+        }
+      };
     });
-    setTimeout(()=>{ game.scene.start('memory', { pairs: nbPairs, cols: cols, rows: rows }); },100);
-  }, 150);
-}
 
-document.querySelectorAll('#accueil .buttons button').forEach(button => {
-  button.addEventListener('click', () => {
-    const pairs = parseInt(button.getAttribute('data-pairs'), 10);
-    if (!isNaN(pairs)) startGame(pairs);
-  });
-});
+    // Redimensionnement fenêtre
+    window.addEventListener('resize', () => {
+      if (game && game.scene.isActive('memory') && currentPairs) {
+        game.destroy(true);
+        document.getElementById('game-container').innerHTML = '';
+        setTimeout(() => startGame(currentPairs), 200);
+      }
+    });
 
-window.addEventListener('resize', () => {
-  if(game && typeof currentPairs !== 'undefined') {
-    game.destroy(true);
-    document.getElementById('game-container').innerHTML='';
-    setTimeout(()=>{ startGame(currentPairs); }, 150);
-  }
-});
-window.onload = () => {
-  document.getElementById('accueil').style.display='flex';
-  document.getElementById('header').style.display='none';
-};
-</script>
+    window.onload = () => {
+      document.getElementById('accueil').style.display = 'flex';
+      document.getElementById('header').style.display = 'none';
+    };
+
+  </script>
 </body>
 </html>
