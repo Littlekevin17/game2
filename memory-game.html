@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Memory F1 - Phaser Animé</title>
+  <title>Memory F1 - Phaser Animé avec sons win et fail</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
   <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
   <style>
@@ -25,7 +25,7 @@
   <div id="game-parent"></div>
 <script>
 const PAIRS = 20, COLS = 8, ROWS = 5, CARD_RATIO = 3/2, CARD_GAP_RATIO = 0.03;
-let game, matchSound, errorSound, winSound;
+let game, matchSound, failSound, winSound;
 
 function getSizes() {
   const parent = document.getElementById('game-parent');
@@ -56,127 +56,146 @@ function preload() {
   this.load.image('back', 'assets/carte-dos.jpg');
   for (let i = 1; i <= PAIRS; i++) this.load.image('face' + i, 'assets/' + i + '.jpg');
   this.load.audio('matchSound', 'sounds/match.mp3');
-  this.load.audio('error', 'sounds/error.mp3'); // ajoute un petit son "error.mp3" (optionnel)
-  this.load.audio('win', 'sounds/win.mp3'); // ajouter "win.mp3" si tu veux
+  this.load.audio('failSound', 'sounds/fail.mp3');  // Remplace error.mp3 par fail.mp3
+  this.load.audio('winSound', 'sounds/win.mp3');
 }
 
 function create() {
-  let scene = this, cards = [], lockBoard = false, matchedPairs = 0, pairsFound = 0, moves = 0, timer = 0, timerEvent;
+  let scene = this, cards = [], lockBoard = false, matchedPairs = 0, moves = 0, timer = 0, timerEvent;
   const {cardW, cardH, gapW, gapH, startX, startY, w, h} = getSizes();
-  // Texte score, temps, victoire
+
   let txtScore = this.add.text(16, 8, 'Coups: 0', { font: '20px Arial', fill: '#ffe', shadow: {offsetX: 1, offsetY: 1, color: "#111", blur: 4, fill: true}});
   let txtTime = this.add.text(w - 150, 8, 'Temps: 0s', { font: '20px Arial', fill: '#ffe', shadow: {offsetX: 1, offsetY: 1, color: "#111", blur: 4, fill: true}});
   let victoryBanner = this.add.text(w/2, h/2, '', { font: '40px Arial', fill: '#0f0', backgroundColor:'#222d', padding: { left: 16, right: 16, top:8, bottom:10 } })
       .setOrigin(0.5,0.5).setAlpha(0);
 
-  matchSound = this.sound.add('matchSound'); errorSound = this.sound.add('error')||{play(){}};
-  winSound = this.sound.add('win')||{play(){}};
+  matchSound = this.sound.add('matchSound'); 
+  failSound = this.sound.add('failSound');
+  winSound = this.sound.add('winSound');
 
-  // Génère la pile de cartes mélangées
-  let values = []; for (let i = 1; i <= PAIRS; i++) values.push(i, i);
-  Phaser.Utils.Array.Shuffle(values);
-
-  // Construit les cartes, utilise containers pour flipper plus naturellement (gère les tweens)
   let opened = [], canClick = true;
 
-  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
-    let idx = y*COLS+x; if(idx>=values.length) break;
-    let val = values[idx], px = startX + x * (cardW + gapW), py = startY + y * (cardH + gapH);
-    // Container pour flip (on met dos ET face et on tween le scaleX du conteneur)
-    let container = this.add.container(px, py);
-    // Face cachée
-    let cardBack = scene.add.image(0,0,'back').setDisplaySize(cardW,cardH);
-    // Face visible
-    let cardFace = scene.add.image(0,0,'face'+val).setDisplaySize(cardW,cardH).setVisible(false);
-    container.add([cardBack, cardFace]);
-    container.setSize(cardW, cardH);
-    container.setInteractive(new Phaser.Geom.Rectangle(-cardW/2, -cardH/2, cardW, cardH), Phaser.Geom.Rectangle.Contains);
-    container.cardValue = val; container.flipped = false; container.locked = false;
-    container.cardBack = cardBack; container.cardFace = cardFace;
+  // Tableau des valeurs (2 x chaque valeur)
+  let values = [];
+  for (let i = 1; i <= PAIRS; i++) values.push(i, i);
+  Phaser.Utils.Array.Shuffle(values);
 
-    container.on('pointerdown', function () {
-      if (!canClick || container.flipped || container.locked) return;
-      canClick = false;
-      scene.tweens.add({
-        targets: container,
-        scaleX: 0,
-        duration: 120,
-        onComplete: function () {
-          container.cardBack.setVisible(false);
-          container.cardFace.setVisible(true);
-          scene.tweens.add({
-            targets: container,
-            scaleX: 1,
-            duration: 110,
-            onComplete: function () {
-              container.flipped = true;
-              opened.push(container);
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      let idx = y * COLS + x;
+      if(idx >= values.length) break;
+      let val = values[idx];
+      let px = startX + x * (cardW + gapW);
+      let py = startY + y * (cardH + gapH);
+      let container = this.add.container(px, py);
+      let cardBack = scene.add.image(0, 0, 'back').setDisplaySize(cardW, cardH);
+      let cardFace = scene.add.image(0, 0, 'face' + val).setDisplaySize(cardW, cardH).setVisible(false);
+      container.add([cardBack, cardFace]);
+      container.setSize(cardW, cardH);
+      container.setInteractive(new Phaser.Geom.Rectangle(-cardW/2, -cardH/2, cardW, cardH), Phaser.Geom.Rectangle.Contains);
+      container.cardValue = val;
+      container.flipped = false;
+      container.locked = false;
+      container.cardBack = cardBack;
+      container.cardFace = cardFace;
 
-              if (opened.length === 2) {
-                moves++; txtScore.setText("Coups: " + moves);
-                let [c1,c2] = opened;
-                if (c1.cardValue === c2.cardValue) {
-                  matchSound.play();
-                  c1.locked = c2.locked = true; pairsFound++;
-                  scene.tweens.add({ targets: [c1, c2], scale: 1.12, yoyo: true, duration: 250 });
-                  if (pairsFound === PAIRS) {
-                    clearInterval(timerEvent);
-                    winSound.play();
-                    victoryBanner.setText("Gagné ! 🎉\n"+moves+" coups, "+timer+"s");
-                    victoryBanner.setAlpha(1);
-                    scene.tweens.add({targets: victoryBanner, scale:1.12, yoyo:true, duration:320, repeat:2});
+      container.on('pointerdown', function () {
+        if (!canClick || container.flipped || container.locked) return;
+        canClick = false;
+        scene.tweens.add({
+          targets: container,
+          scaleX: 0,
+          duration: 120,
+          onComplete: function () {
+            container.cardBack.setVisible(false);
+            container.cardFace.setVisible(true);
+            scene.tweens.add({
+              targets: container,
+              scaleX: 1,
+              duration: 110,
+              onComplete: function () {
+                container.flipped = true;
+                opened.push(container);
+
+                if (opened.length === 2) {
+                  moves++;
+                  txtScore.setText("Coups: " + moves);
+                  let [c1, c2] = opened;
+                  if (c1.cardValue === c2.cardValue) {
+                    matchSound.play();
+                    c1.locked = c2.locked = true;
+                    matchedPairs++;
+                    scene.tweens.add({ targets: [c1, c2], scale: 1.12, yoyo: true, duration: 250 });
+                    if (matchedPairs === PAIRS) {
+                      clearInterval(timerEvent);
+                      winSound.play();
+                      victoryBanner.setText(`Gagné ! 🎉\n${moves} coups, ${timer}s`);
+                      victoryBanner.setAlpha(1);
+                      scene.tweens.add({targets: victoryBanner, scale:1.12, yoyo:true, duration:320, repeat:2});
+                    }
+                    opened = []; 
+                    setTimeout(()=>canClick=true, 180);
+                  } else {
+                    failSound.play();
+                    setTimeout(() => {
+                      scene.tweens.add({
+                        targets: [c1, c2],
+                        scaleX: 0,
+                        duration: 120,
+                        onComplete: function () {
+                          [c1, c2].forEach(c => {
+                            c.cardBack.setVisible(true);
+                            c.cardFace.setVisible(false);
+                            c.flipped = false;
+                          });
+                          scene.tweens.add({
+                            targets: [c1, c2], scaleX: 1, duration: 100,
+                            onComplete: () => { opened = []; canClick = true; }
+                          });
+                        }
+                      });
+                    }, 500);
                   }
-                  opened = []; setTimeout(()=>canClick=true,180);
                 } else {
-                  errorSound.play();
-                  setTimeout(() => {
-                    scene.tweens.add({
-                      targets:[c1,c2],
-                      scaleX:0,
-                      duration:120,
-                      onComplete:function () {
-                        [c1,c2].forEach(c=>{
-                          c.cardBack.setVisible(true); c.cardFace.setVisible(false);
-                          c.flipped = false;
-                        });
-                        scene.tweens.add({targets:[c1,c2], scaleX:1, duration:100,onComplete:()=>{opened=[];canClick=true;}});
-                      }
-                    });
-                  }, 500);
+                  canClick = true;
                 }
-              } else {
-                canClick = true;
               }
-            }
-          });
-        }
+            });
+          }
+        });
       });
-    });
-    cards.push(container);
+      cards.push(container);
+    }
   }
 
-  // Timer
-  timerEvent = setInterval(function(){
-    timer++; txtTime.setText("Temps: "+timer+"s");
-  },1000);
+  // Timer d'affichage
+  timerEvent = setInterval(() => {
+    timer++;
+    txtTime.setText("Temps: " + timer + "s");
+  }, 1000);
 
-  // Rejoue clean via bouton
+  // Bouton rejouer
   document.getElementById('restartBtn').onclick = () => {
     clearInterval(timerEvent);
     game.destroy(true);
     document.getElementById('game-parent').innerHTML = '';
-    setTimeout(()=>{ game = new Phaser.Game(createConfig()); }, 20);
+    setTimeout(() => { game = new Phaser.Game(createConfig()); }, 20);
   };
 }
 
-// Responsive : relance quand redimensionné (orientation, resize, etc)
+// Redimensionnement: on recrée le jeu
 window.addEventListener('resize', () => {
-  if(game){
-    game.destroy(true); document.getElementById('game-parent').innerHTML = '';
-    setTimeout(()=>{ game = new Phaser.Game(createConfig()); }, 20);
+  if (game) {
+    game.destroy(true);
+    document.getElementById('game-parent').innerHTML = '';
+    setTimeout(() => { game = new Phaser.Game(createConfig()); }, 20);
   }
 });
-window.onload = () => { game = new Phaser.Game(createConfig()); };
+
+// Initialisation au chargement de la page
+window.onload = () => {
+  game = new Phaser.Game(createConfig());
+};
 </script>
 </body>
 </html>
