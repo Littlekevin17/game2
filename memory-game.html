@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Memory F1 - Phaser Animé corrigé</title>
+  <title>Memory F1 - Phaser Animé avec écran de fin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
   <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
   <style>
@@ -151,15 +151,25 @@
     failSound = this.sound.add('failSound');
     winSound = this.sound.add('winSound');
 
-    // Texte victoire au centre du canvas
-    let victoryBanner = this.add.text(w / 2, h / 2, '', {
+    // Texte victoire au centre du canvas (overlay semi-transparent)
+    const overlay = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.5)
+      .setDepth(20)
+      .setVisible(false);
+    const victoryBanner = this.add.text(w / 2, h / 2, '', {
       font: '40px Arial',
       fill: '#0f0',
       backgroundColor: '#222d',
-      padding: { left: 16, right: 16, top: 8, bottom: 10 },
+      padding: { left: 24, right: 24, top: 16, bottom: 16 },
       align: 'center',
       wordWrap: { width: w * 0.8 }
-    }).setOrigin(0.5).setAlpha(0);
+    }).setOrigin(0.5).setDepth(21).setVisible(false);
+
+    // Activation AudioContext au premier clic pour garantir son
+    this.input.once('pointerdown', () => {
+      if (this.sound.context.state === 'suspended') {
+        this.sound.context.resume();
+      }
+    });
 
     // Timer incrémenté chaque seconde
     const timerEvent = setInterval(() => {
@@ -221,9 +231,11 @@
                       if (matchedPairs === PAIRS) {
                         clearInterval(timerEvent);
                         winSound.play();
+                        overlay.setVisible(true);
                         victoryBanner.setText(`Gagné ! 🎉\n${moves} coups, ${timer}s`);
-                        victoryBanner.setAlpha(1);
+                        victoryBanner.setVisible(true);
                         scene.tweens.add({ targets: victoryBanner, scale: 1.12, yoyo: true, duration: 320, repeat: 2 });
+                        canClick = false; // désactive les clics sauf reboot
                       }
                       opened = [];
                       setTimeout(() => { canClick = true; }, 180);
