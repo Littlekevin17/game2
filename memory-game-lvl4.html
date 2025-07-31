@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Memory F1 - Phaser Animé avec écran de fin</title>
+  <title>Memory F1 - 20 Paires - Plein écran</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
   <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
   <style>
@@ -12,9 +12,6 @@
       color: #fff;
       font-family: sans-serif;
       user-select: none;
-      -webkit-user-select: none;
-      -moz-user-select: none;
-      -ms-user-select: none;
       overflow: hidden;
     }
     #header {
@@ -25,21 +22,28 @@
       background: #111c;
       color: #fff;
       font-size: 16px;
-      position: relative;
       height: 40px;
       max-width: 1100px;
       margin: 10px auto 0;
       border-radius: 5px;
+      box-sizing: border-box;
     }
     #header > div {
       min-width: 75px;
       text-align: center;
+      flex-shrink: 0;
     }
-    #restartBtn {
-      margin: 0 auto;
+    .header-center {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    #restartBtn, #fullscreenBtn {
+      margin: 0;
       position: static;
       cursor: pointer;
-      padding: 6px 16px;
+      padding: 6px 14px;
       border-radius: 5px;
       border: none;
       background: #0a74da;
@@ -48,6 +52,22 @@
       font-size: 18px;
       box-shadow: 0 2px 6px #111a;
       user-select: none;
+      transition: background 0.2s;
+    }
+    #fullscreenBtn {
+      font-size: 20px;
+      padding: 6px 10px 6px 10px;
+      margin-left: 3px;
+      background: #0a5ba8;
+      min-width: 36px;
+      width: 36px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #restartBtn:hover, #fullscreenBtn:hover {
+      background: #09508c;
     }
     #game-parent {
       position: absolute;
@@ -66,13 +86,21 @@
       image-rendering: crisp-edges;
       user-select: none;
     }
+    @media (max-width: 700px) {
+      #header { font-size: 13px; height: 36px; padding: 3px 5px; }
+      #restartBtn, #fullscreenBtn { font-size: 15px; padding: 4px 7px; height: 32px; }
+      .header-center { gap: 4px; }
+    }
   </style>
 </head>
 <body>
 
 <div id="header">
   <div id="infoCoups">Coups: 0</div>
-  <button id="restartBtn">Rejouer</button>
+  <div class="header-center">
+    <button id="restartBtn">Rejouer</button>
+    <button id="fullscreenBtn" title="Plein écran">🔲</button>
+  </div>
   <div id="infoTemps">Temps: 0s</div>
 </div>
 
@@ -82,7 +110,7 @@
   const PAIRS = 20;
   const COLS = 8;
   const ROWS = 5;
-  const CARD_RATIO = 3 / 2; // largeur/hauteur
+  const CARD_RATIO = 3 / 2;
   const CARD_GAP_RATIO = 0.03;
 
   let game, matchSound, failSound, winSound;
@@ -109,12 +137,11 @@
   }
 
   function createConfig() {
-    const parent = document.getElementById('game-parent');
     return {
       type: Phaser.AUTO,
       parent: 'game-parent',
-      width: parent.clientWidth,
-      height: parent.clientHeight,
+      width: document.getElementById('game-parent').clientWidth,
+      height: document.getElementById('game-parent').clientHeight,
       backgroundColor: '#243',
       scene: { preload, create },
       scale: { mode: Phaser.Scale.NONE, autoCenter: Phaser.Scale.CENTER_BOTH }
@@ -141,7 +168,7 @@
     let opened = [];
     let canClick = true;
 
-    // Références éléments du header
+    // Header
     const infoCoups = document.getElementById('infoCoups');
     const infoTemps = document.getElementById('infoTemps');
     infoCoups.textContent = 'Coups: 0';
@@ -151,7 +178,6 @@
     failSound = this.sound.add('failSound');
     winSound = this.sound.add('winSound');
 
-    // Texte victoire au centre du canvas (overlay semi-transparent)
     const overlay = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.5)
       .setDepth(20)
       .setVisible(false);
@@ -164,33 +190,29 @@
       wordWrap: { width: w * 0.8 }
     }).setOrigin(0.5).setDepth(21).setVisible(false);
 
-    // Activation AudioContext au premier clic pour garantir son
     this.input.once('pointerdown', () => {
       if (this.sound.context.state === 'suspended') {
         this.sound.context.resume();
       }
     });
 
-    // Timer incrémenté chaque seconde
     const timerEvent = setInterval(() => {
       timer++;
       infoTemps.textContent = "Temps: " + timer + "s";
     }, 1000);
 
-    // Mélanger les cartes
     let values = [];
     for (let i = 1; i <= PAIRS; i++) values.push(i, i);
     Phaser.Utils.Array.Shuffle(values);
 
-    // Création des cartes avec containers (pour animation flip)
     for (let y = 0; y < ROWS; y++) {
       for (let x = 0; x < COLS; x++) {
         let idx = y * COLS + x;
         if (idx >= values.length) break;
         let val = values[idx];
-        let px = startX + x * (cardW + gapW);
-        let py = startY + y * (cardH + gapH);
-        let container = this.add.container(px, py);
+        let posX = startX + x * (cardW + gapW);
+        let posY = startY + y * (cardH + gapH);
+        let container = this.add.container(posX, posY);
         let cardBack = scene.add.image(0, 0, 'back').setDisplaySize(cardW, cardH);
         let cardFace = scene.add.image(0, 0, 'face' + val).setDisplaySize(cardW, cardH).setVisible(false);
         container.add([cardBack, cardFace]);
@@ -221,8 +243,8 @@
                   opened.push(container);
                   if (opened.length === 2) {
                     moves++;
-                    infoCoups.textContent = "Coups: " + moves;
-                    let [c1, c2] = opened;
+                    infoCoups.textContent = 'Coups: ' + moves;
+                    const [c1, c2] = opened;
                     if (c1.cardValue === c2.cardValue) {
                       matchSound.play();
                       c1.locked = c2.locked = true;
@@ -235,7 +257,7 @@
                         victoryBanner.setText(`Gagné ! 🎉\n${moves} coups, ${timer}s`);
                         victoryBanner.setVisible(true);
                         scene.tweens.add({ targets: victoryBanner, scale: 1.12, yoyo: true, duration: 320, repeat: 2 });
-                        canClick = false; // désactive les clics sauf reboot
+                        canClick = false;
                       }
                       opened = [];
                       setTimeout(() => { canClick = true; }, 180);
@@ -253,8 +275,13 @@
                               c.flipped = false;
                             });
                             scene.tweens.add({
-                              targets: [c1, c2], scaleX: 1, duration: 100,
-                              onComplete: () => { opened = []; canClick = true; }
+                              targets: [c1, c2],
+                              scaleX: 1,
+                              duration: 100,
+                              onComplete: () => {
+                                opened = [];
+                                canClick = true;
+                              }
                             });
                           }
                         });
@@ -272,8 +299,7 @@
     }
 
     // Bouton Rejouer
-    const restartBtn = document.getElementById('restartBtn');
-    restartBtn.onclick = () => {
+    document.getElementById('restartBtn').onclick = () => {
       clearInterval(timerEvent);
       game.destroy(true);
       document.getElementById('game-parent').innerHTML = '';
@@ -283,7 +309,15 @@
     };
   }
 
-  // Redimensionnement : recrée le jeu Phaser
+  // Plein écran
+  document.getElementById('fullscreenBtn').onclick = () => {
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) elem.requestFullscreen();
+    else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+    else if (elem.mozRequestFullScreen) elem.mozRequestFullScreen();
+    else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
+  };
+
   window.addEventListener('resize', () => {
     if (game) {
       game.destroy(true);
@@ -294,11 +328,9 @@
     }
   });
 
-  // Démarrage initial
   window.onload = () => {
     game = new Phaser.Game(createConfig());
   };
 </script>
-
 </body>
 </html>
