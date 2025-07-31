@@ -2,88 +2,115 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Memory F1 - Accueil</title>
+  <title>Memory F1 - Accueil style F1</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <!-- Police Bebas Neue via Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet"/>
   <style>
-    /* Reset et styles de base */
-    * {
+    /* Reset */
+    *, *::before, *::after {
       box-sizing: border-box;
     }
-    body {
-      background: linear-gradient(135deg, #031d3dcc 40%, #15312acc 100%);
+    html, body {
+      margin: 0; padding: 0;
+      height: 100vh; /* Fixe la hauteur sans scroll */
+      background: linear-gradient(160deg, #0a0a0a 0%, #b30009 60%, #0a0a0a 100%);
       color: #fff;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      min-height: 100vh;
-      margin: 0;
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      padding: 20px;
-      text-align: center;
+      padding: 12px 20px;
+      overflow: hidden; /* Empêche scroll */
       user-select: none;
     }
     h1 {
-      font-size: 3rem;
-      color: #f4c20d;
-      margin-bottom: 1.5rem;
-      letter-spacing: 3px;
-      text-shadow: 2px 2px 8px #0008;
       font-family: 'Bebas Neue', cursive, Arial, sans-serif;
+      font-size: clamp(2.4rem, 5vw, 3.6rem);
+      color: #ffca08;
+      margin: 0 0 1.6rem 0;
+      letter-spacing: 4px;
+      text-shadow:
+        0 0 12px #ffca08,
+        0 0 25px #b30009,
+        2px 2px 4px black;
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
+    /* Petite icône F1 en SVG stylisée à côté */
+    h1 svg {
+      width: 48px;
+      height: 48px;
+      fill: #ffca08;
+      filter: drop-shadow(0 0 5px #b30009);
+    }
+
     nav {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
       gap: 20px;
-      max-width: 480px;
+      max-width: 560px;
       width: 100%;
     }
     nav a {
-      flex: 1 1 40%;
-      max-width: 180px;
+      flex: 1 1 45%;
+      max-width: 220px;
       text-decoration: none;
+      user-select: none;
     }
     button.niveau {
       width: 100%;
-      padding: 15px 0;
-      font-size: 1.3rem;
+      padding: 14px 0;
+      font-size: clamp(1.1rem, 3vw, 1.5rem);
       font-weight: 700;
-      color: #1b1b1b;
-      background: linear-gradient(90deg, #00c3ff 0%, #ffc300 120%);
-      border: none;
-      border-radius: 12px;
+      background: linear-gradient(145deg, #0b0b0b, #240000);
+      color: #ffd546;
+      border-radius: 14px;
+      border: 2px solid #b30009;
       cursor: pointer;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-      transition: background-color 0.3s ease, color 0.3s ease;
+      box-shadow:
+        inset 0 0 8px #ffde59,
+        0 3px 6px rgb(50 15 10 / 0.85);
+      letter-spacing: 1.5px;
+      transition:
+        background-color 0.3s ease,
+        color 0.3s ease,
+        box-shadow 0.3s ease;
+      text-shadow: 1px 1px 4px #420000;
       user-select: none;
     }
     button.niveau:hover,
     button.niveau:focus {
-      background: linear-gradient(90deg, #008cdb 0%, #c2a000 120%);
-      color: #fff;
+      background: linear-gradient(145deg, #d43512, #7d0000);
+      color: white;
+      box-shadow:
+        inset 0 0 20px #ffaa33,
+        0 5px 12px rgb(255 120 0 / 0.9),
+        0 0 9px #ffae35;
       outline: none;
-      box-shadow: 0 0 15px #ffc300;
     }
-    /* Responsive */
+
+    /* Responsive : 1 bouton par ligne sur petit écran */
     @media (max-width: 480px) {
-      h1 {
-        font-size: 2.2rem;
-      }
       nav a {
         flex: 1 1 100%;
         max-width: none;
-      }
-      button.niveau {
-        font-size: 1.15rem;
-        padding: 12px 0;
-        border-radius: 10px;
       }
     }
   </style>
 </head>
 <body>
-  <h1>Memory F1</h1>
+  <h1>
+    <!-- Icône F1 : simple stylisation -->
+    <svg aria-hidden="true" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img">
+      <title>F1 icon</title>
+      <path d="M11 44h12l7-20H27l-3 9H17l-4 11Zm33-29h-8a6 6 0 0 0-6 6v12a6 6 0 0 0 6 6h8a6 6 0 0 0 6-6v-4l-10 3v4h-2v-6h9v-2h-9v-3a4 4 0 0 1 4-4h6v-2Zm-3 12 7-2v3a1 1 0 1 1-2 0v-1l-3 1v-1Z"/>
+    </svg>
+    Memory F1
+  </h1>
   <nav>
     <a href="memory-game-lvl1.html"><button class="niveau" type="button">Facile (5 paires)</button></a>
     <a href="memory-game-lvl2.html"><button class="niveau" type="button">Moyen (10 paires)</button></a>
