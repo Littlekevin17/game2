@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Memory F1 - 20 Paires - Version stable</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
+  <style>
+    html, body {
+      margin: 0; padding: 0;
+      height: 100%;
+      background: #243;
+      color: white;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      user-select: none;
+      overflow: hidden;
+    }
+    #header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(0,0,0,0.8);
+      color: #eee;
+      height: 50px;
+      padding: 0 20px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      user-select: none;
+    }
+    #header button {
+      background: #00a6ff;
+      border: none;
+      border-radius: 5px;
+      padding: 6px 15px;
+      font-weight: bold;
+      cursor: pointer;
+      color: #fff;
+      transition: background 0.3s ease;
+    }
+    #header button:hover {
+      background: #007bbf;
+    }
+    #game-container {
+      position: absolute;
+      top: 50px; left: 0; right: 0; bottom: 0;
+      background: #222;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+      user-select:none;
+    }
+  </style>
+</head>
+<body>
+
+<div id="header">
+  <div id="moves">Coups : 0</div>
+  <button id="restartBtn">Rejouer</button>
+  <div id="timer">Temps : 0s</div>
+</div>
+
+<div id="game-container"></div>
+
+<script>
+  const CARD_RATIO = 3/2;
+  const CARD_GAP_RATIO = 0.03;
+  const PAIRS = 20;
+  const COLS = 8;
+  const ROWS = 5;
+
+  let game;
+
+  function getSizes() {
+    const parent = document.getElementById('game-container');
+    const w = parent.clientWidth;
+    const h = parent.clientHeight;
+    const totalGapW = (COLS - 1) * CARD_GAP_RATIO * w;
+    const totalGapH = (ROWS - 1) * CARD_GAP_RATIO * h;
+    let cardW = (w - totalGapW) / COLS;
+    let cardH = cardW / CARD_RATIO;
+    const totalCardH = ROWS * cardH + totalGapH;
+    if (totalCardH > h) {
+      cardH = (h - totalGapH) / ROWS;
+      cardW = cardH * CARD_RATIO;
+    }
+    const gapW = CARD_GAP_RATIO * cardW;
+    const gapH = CARD_GAP_RATIO * cardH;
+    const boardWidth = COLS * cardW + (COLS - 1) * gapW;
+    const boardHeight = ROWS * cardH + (ROWS - 1) * gapH;
+    const startX = (w - boardWidth) / 2 + cardW / 2;
+    const startY = (h - boardHeight) / 2 + cardH / 2;
+    return { w, h, cardW, cardH, gapW, gapH, startX, startY };
+  }
+
+  class MemoryScene extends Phaser.Scene {
+    preload() {
+      this.load.image('back', 'assets/carte-dos.jpg');
+      for (let i = 1; i <= PAIRS; i++) {
+        this.load.image('face' + i, 'assets/' + i + '.jpg');
+      }
+      this.load.audio('match', 'sounds/match.mp3');
+      this.load.audio('fail', 'sounds/fail.mp3');
+      this.load.audio('win', 'sounds/win.mp3');
+    }
+
+    create() {
+      const { cardW, cardH, gapW, gapH, startX, startY, w, h } = getSizes();
+
+      this.moves = 0;
+      this.matched = 0;
+      this.opened = [];
+      this.canClick = true;
+      this.timer = 0;
+
+      const movesText = document.getElementById('moves');
+      const timerText = document.getElementById('timer');
+      movesText.textContent = 'Coups : 0';
+      timerText.textContent = 'Temps : 0s';
+
+      this.matchSound = this.sound.add('match');
+      this.failSound = this.sound.add('fail');
+      this.winSound = this.sound.add('win');
+
+      this.overlay = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.5).setDepth(20).setVisible(false);
+      this.victoryText = this.add.text(w / 2, h / 2, '', {
+        fontSize: '40px',
+        fill: '#0f0',
+        backgroundColor: '#222d',
+        padding: { left: 20, right: 20, top: 10, bottom: 10 },
+        align: 'center',
+        wordWrap: { width: w * 0.8 },
+      }).setOrigin(0.5).setDepth(21).setVisible(false);
+
+      this.input.once('pointerdown', () => {
+        if (this.sound.context.state === 'suspended') this.sound.context.resume();
+      });
+
+      if (this.timerEvent) clearInterval(this.timerEvent);
+      this.timerEvent = setInterval(() => {
+        this.timer++;
+        timerText.textContent = 'Temps : ' + this.timer + 's';
+      }, 1000);
+
+      let values = [];
+      for (let i = 1; i <= PAIRS; i++) values.push(i, i);
+      Phaser.Utils.Array.Shuffle(values);
+
+      for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+          const idx = y * COLS + x;
+          if (idx >= values.length) break;
+          const val = values[idx];
+          const px = startX + x * (cardW + gapW);
+          const py = startY + y * (cardH + gapH);
+
+          const card = this.add.container(px, py);
+
+          const back = this.add.image(0, 0, 'back').setDisplaySize(cardW, cardH);
+          const face = this.add.image(0, 0, 'face' + val).setDisplaySize(cardW, cardH).setVisible(false);
+
+          card.add([back, face]);
+          card.setSize(cardW, cardH);
+          card.setInteractive();
+
+          card.cardValue = val;
+          card.flipped = false;
+          card.locked = false;
+          card.cardBack = back;
+          card.cardFace = face;
+
+          card.on('pointerdown', () => {
+            if (!this.canClick || card.flipped ||
