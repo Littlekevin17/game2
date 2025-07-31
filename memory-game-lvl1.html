@@ -6,89 +6,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
   <style>
-    body {
-      margin: 0;
-      background: #243;
-      color: #fff;
-      font-family: sans-serif;
-      user-select: none;
-      overflow: hidden;
-    }
-    #header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 6px 12px;
-      background: #111c;
-      color: #fff;
-      font-size: 16px;
-      height: 40px;
-      max-width: 1100px;
-      margin: 10px auto 0;
-      border-radius: 5px;
-      box-sizing: border-box;
-    }
-    #header > div {
-      min-width: 75px;
-      text-align: center;
-      flex-shrink: 0;
-    }
-    .header-center {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex-shrink: 0;
-    }
-    #restartBtn, #fullscreenBtn {
-      cursor: pointer;
-      padding: 6px 14px;
-      border-radius: 5px;
-      border: none;
-      background: #0a74da;
-      color: white;
-      font-weight: bold;
-      font-size: 18px;
-      box-shadow: 0 2px 6px #111a;
-      user-select: none;
-      transition: background 0.2s;
-    }
-    #fullscreenBtn {
-      font-size: 20px;
-      padding: 6px 10px 6px 10px;
-      margin-left: 3px;
-      background: #0a5ba8;
-      min-width: 36px;
-      width: 36px;
-      height: 40px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    #restartBtn:hover, #fullscreenBtn:hover {
-      background: #09508c;
-    }
-    #game-parent {
-      position: absolute;
-      left: 0; right: 0; bottom: 0;
-      top: 60px;
-      width: 100vw;
-      height: calc(100vh - 60px);
-      max-width: 1100px;
-      margin: 0 auto;
-      background: #222;
-    }
-    canvas {
-      width: 100% !important;
-      height: 100% !important;
-      display: block;
-      image-rendering: crisp-edges;
-      user-select: none;
-    }
-    @media (max-width: 700px) {
-      #header { font-size: 13px; height: 36px; padding: 3px 5px; }
-      #restartBtn, #fullscreenBtn { font-size: 15px; padding: 4px 7px; height: 32px; }
-      .header-center { gap: 4px; }
-    }
+    body { margin:0; background:#243; color:#fff; font-family:sans-serif; user-select:none; overflow:hidden; }
+    #header { display:flex; align-items:center; justify-content:space-between; padding:6px 12px; background:#111c; color:#fff; font-size:16px; height:40px; max-width:1100px; margin:10px auto 0; border-radius:5px; box-sizing:border-box; }
+    #header > div { min-width:75px; text-align:center; flex-shrink:0; }
+    .header-center { display:flex; align-items:center; gap:6px; flex-shrink:0;}
+    #restartBtn, #fullscreenBtn { cursor:pointer; padding:6px 14px; border-radius:5px; border:none; background:#0a74da; color:white; font-weight:bold; font-size:18px; box-shadow:0 2px 6px #111a; user-select:none; transition:background 0.2s;}
+    #fullscreenBtn { font-size:20px; padding:6px 10px 6px 10px; margin-left:3px; background:#0a5ba8; min-width:36px; width:36px; height:40px; display:flex; align-items:center; justify-content:center;}
+    #restartBtn:hover, #fullscreenBtn:hover { background:#09508c;}
+    #game-parent { position:absolute; left:0; right:0; bottom:0; top:60px; width:100vw; height:calc(100vh - 60px); max-width:1100px; margin:0 auto; background:#222; }
+    canvas { width:100% !important; height:100% !important; display:block; image-rendering:crisp-edges; user-select:none;}
+    @media (max-width:700px){ #header{font-size:13px;height:36px;padding:3px 5px;} #restartBtn, #fullscreenBtn{font-size:15px;padding:4px 7px;height:32px;} .header-center{gap:4px;} }
   </style>
 </head>
 <body>
@@ -106,12 +33,13 @@
 
 <script>
   const PAIRS = 5;
-  const COLS = 5;    // 5 colonnes
-  const ROWS = 2;    // 2 lignes (5x2=10 cartes)
+  const COLS = 5;
+  const ROWS = 2;
   const CARD_RATIO = 3 / 2;
   const CARD_GAP_RATIO = 0.03;
 
-  let game, matchSound, failSound, winSound;
+  let game;
+  let timerIntervalId = null; // timer global unique
 
   function getSizes() {
     const parent = document.getElementById('game-parent');
@@ -166,6 +94,7 @@
     let opened = [];
     let canClick = true;
 
+    // Header
     const infoMoves = document.getElementById('infoMoves');
     const infoTimer = document.getElementById('infoTimer');
     infoMoves.textContent = 'Coups: 0';
@@ -189,15 +118,19 @@
       if (this.sound.context.state === 'suspended') this.sound.context.resume();
     });
 
-    const timerEvent = setInterval(() => {
+    // Corrige le bug : stoppe le timer existant avant d’en créer un nouveau
+    if(timerIntervalId) {
+      clearInterval(timerIntervalId);
+      timerIntervalId = null;
+    }
+    timerIntervalId = setInterval(() => {
       timer++;
       infoTimer.textContent = `Temps: ${timer}s`;
     }, 1000);
 
     let values = [];
     for (let i = 1; i <= PAIRS; i++) {
-      values.push(i);
-      values.push(i);
+      values.push(i); values.push(i);
     }
     Phaser.Utils.Array.Shuffle(values);
 
@@ -250,25 +183,16 @@
 
                     if (c1.cardValue === c2.cardValue) {
                       matchSound.play();
-                      c1.locked = true;
-                      c2.locked = true;
-                      matchedPairs++;
-
-                      scene.tweens.add({
-                        targets: [c1, c2],
-                        scale: 1.12,
-                        yoyo: true,
-                        duration: 250
-                      });
+                      c1.locked = true; c2.locked = true; matchedPairs++;
+                      scene.tweens.add({ targets: [c1, c2], scale: 1.12, yoyo: true, duration: 250 });
 
                       if (matchedPairs === PAIRS) {
-                        clearInterval(timerEvent);
+                        clearInterval(timerIntervalId);
+                        timerIntervalId = null;
                         winSound.play();
-
                         overlay.setVisible(true);
                         victoryText.setText(`Bravo !\n${moves} coups\n${timer}s`);
                         victoryText.setVisible(true);
-
                         scene.tweens.add({
                           targets: victoryText,
                           scale: 1.2,
@@ -276,16 +200,13 @@
                           repeat: 4,
                           duration: 300
                         });
-
                         canClick = false;
                       }
-
                       opened = [];
                       setTimeout(() => { canClick = true; }, 200);
                     }
                     else {
                       failSound.play();
-
                       setTimeout(() => {
                         scene.tweens.add({
                           targets: [c1, c2],
@@ -322,7 +243,8 @@
     }
 
     document.getElementById('restartBtn').onclick = () => {
-      clearInterval(timerEvent);
+      clearInterval(timerIntervalId);
+      timerIntervalId = null;
       game.destroy(true);
       document.getElementById('game-parent').innerHTML = '';
       setTimeout(() => {
@@ -365,6 +287,8 @@
 
   window.addEventListener('resize', () => {
     if (game) {
+      clearInterval(timerIntervalId);
+      timerIntervalId = null;
       game.destroy(true);
       document.getElementById('game-parent').innerHTML = '';
       setTimeout(() => {
