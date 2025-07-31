@@ -259,20 +259,28 @@ function create() {
 }
 
 function startGame(nbPairs) {
-  const {cols, rows} = getPlateau(nbPairs);
-  PAIRS = nbPairs; COLS = cols; ROWS = rows;
+  const { cols, rows } = getPlateau(nbPairs);
+  PAIRS = nbPairs;
+  COLS = cols;
+  ROWS = rows;
+  
+  // Cacher l'accueil et afficher l'entête
   document.getElementById("accueil").style.display = "none";
   document.getElementById("header").style.display = "flex";
+  
+  // Vider le conteneur de jeu actuel (prêt pour nouvelle instance Phaser)
   document.getElementById("game-parent").innerHTML = '';
 
-  // Délai 100ms avant création pour assurer layout fini
+  // Ajoute le délai (150ms) avant de créer l’instance Phaser
   setTimeout(() => {
-    console.log("Démarrage Phaser, taille container:",
-                document.getElementById('game-parent').clientWidth,
-                document.getElementById('game-parent').clientHeight);
+    // Ici on affiche la taille réelle du conteneur juste avant de lancer Phaser
+    const gameParent = document.getElementById('game-parent');
+    console.log("Taille #game-parent au lancement Phaser : width =", gameParent.clientWidth, "height =", gameParent.clientHeight);
 
+    // Création du jeu Phaser
     game = new Phaser.Game(createConfig(cols, rows, nbPairs));
-  }, 100);
+
+  }, 150);
 }
 
 document.querySelectorAll('.btn-niveau').forEach(btn => {
