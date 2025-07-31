@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Memory F1 - Sélection et Responsive</title>
+  <title>Memory F1 - Sélection et Responsive corrigé</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
   <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
   <style>
@@ -108,8 +108,6 @@ let PAIRS = 20, COLS = 8, ROWS = 5, CARD_RATIO = 3/2, CARD_GAP_RATIO = 0.03;
 let game;
 
 function getPlateau(nbPairs) {
-  // Heuristique : pour moins de 8 paires, 4 colonnes ; 
-  // jusqu’à 12, 5 colonnes ; jusqu’à 15, 6 colonnes ; puis 7 & 8 colonnes max.
   let total = nbPairs * 2;
   let cols = total <= 16 ? 4 :
              total <= 24 ? 5 :
@@ -135,14 +133,14 @@ function getSizes(cols, rows) {
   }
   const gapW = CARD_GAP_RATIO * cardW;
   const gapH = CARD_GAP_RATIO * cardH;
-  const boardWidth = cols * cardW + (cols - 1) * gapW;
-  const boardHeight = rows * cardH + (rows - 1) * gapH;
+  const boardWidth = cols * cardW + (cols -1) * gapW;
+  const boardHeight = rows * cardH + (rows -1) * gapH;
   const startX = (w - boardWidth) / 2 + cardW / 2;
   const startY = (h - boardHeight) / 2 + cardH / 2;
-  return { w, h, cardW, cardH, gapW, gapH, startX, startY };
+  return {w, h, cardW, cardH, gapW, gapH, startX, startY};
 }
 
-function createConfig(cols, rows) {
+function createConfig(cols, rows, nbPairs) {
   const parent = document.getElementById('game-parent');
   return {
     type: Phaser.AUTO,
@@ -150,18 +148,23 @@ function createConfig(cols, rows) {
     width: parent.clientWidth,
     height: parent.clientHeight,
     backgroundColor: '#243',
-    scene: { preload, create },
+    scene: {
+      init: function(data) {
+        this.nbPairs = data.nbPairs;
+        this.cols = data.cols;
+        this.rows = data.rows;
+      },
+      preload: preload,
+      create: create
+    },
     scale: { mode: Phaser.Scale.NONE, autoCenter: Phaser.Scale.CENTER_BOTH },
-    data: { cols, rows, nbPairs: PAIRS }
   };
 }
 
 function preload() {
-  this.nbPairs = this.game.config.data.nbPairs;
-  this.cols = this.game.config.data.cols;
-  this.rows = this.game.config.data.rows;
+  const nbPairs = this.nbPairs;
   this.load.image('back', 'assets/carte-dos.jpg');
-  for (let i = 1; i <= this.nbPairs; i++) {
+  for (let i = 1; i <= nbPairs; i++) {
     this.load.image('face' + i, 'assets/' + i + '.jpg');
   }
   this.load.audio('matchSound', 'sounds/match.mp3');
@@ -172,8 +175,9 @@ function preload() {
 function create() {
   const scene = this;
   const cols = this.cols, rows = this.rows, nbPairs = this.nbPairs;
-  const { cardW, cardH, gapW, gapH, startX, startY, w, h } = getSizes(cols, rows);
+  const {cardW, cardH, gapW, gapH, startX, startY, w, h} = getSizes(cols, rows);
   document.getElementById("header").style.display = "flex";
+
   let moves = 0, matchedPairs = 0, timer = 0, opened = [], canClick = true;
   const infoCoups = document.getElementById('infoCoups');
   const infoTemps = document.getElementById('infoTemps');
@@ -183,23 +187,24 @@ function create() {
   let matchSound = this.sound.add('matchSound');
   let failSound  = this.sound.add('failSound');
   let winSound   = this.sound.add('winSound');
-  // Overlay fin
+
   const overlay = this.add.rectangle(w/2, h/2, w, h, 0x000000, 0.5).setDepth(20).setVisible(false);
-  const victoryBanner = this.add.text(w/2, h/2, '', {font:'40px Arial',fill:'#0f0',backgroundColor:'#222d',
-      padding:{left:24, right:24, top:16, bottom:16},align:'center',wordWrap:{width:w*0.8}
-    }).setOrigin(0.5).setDepth(21).setVisible(false);
-  // Activation du son au premier clic/touch
+  const victoryBanner = this.add.text(w/2, h/2, '', {
+    font:'40px Arial', fill:'#0f0', backgroundColor:'#222d',
+    padding:{left:24, right:24, top:16, bottom:16}, align:'center', wordWrap:{width: w*0.8}
+  }).setOrigin(0.5).setDepth(21).setVisible(false);
+
   this.input.once('pointerdown', () => {
     if (this.sound.context.state === 'suspended') {
       this.sound.context.resume();
     }
   });
-  // Timer
+
   const timerEvent = setInterval(() => {
     timer++;
     infoTemps.textContent = "Temps: " + timer + "s";
   }, 1000);
-  // Création et mélange du plateau
+
   let values = [];
   for (let i = 1; i <= nbPairs; i++) values.push(i, i);
   Phaser.Utils.Array.Shuffle(values);
@@ -219,22 +224,27 @@ function create() {
       container.setInteractive();
       container.cardValue = val; container.flipped = false; container.locked = false;
       container.cardBack = cardBack; container.cardFace = cardFace;
+
       container.on('pointerdown', function () {
         if (!canClick || container.flipped || container.locked) return;
         canClick = false;
         scene.tweens.add({
           targets: container, scaleX: 0, duration: 120,
           onComplete: () => {
-            container.cardBack.setVisible(false); container.cardFace.setVisible(true);
+            container.cardBack.setVisible(false);
+            container.cardFace.setVisible(true);
             scene.tweens.add({
               targets: container, scaleX: 1, duration: 110,
               onComplete: () => {
-                container.flipped = true; opened.push(container);
+                container.flipped = true;
+                opened.push(container);
                 if (opened.length === 2) {
-                  moves++; infoCoups.textContent = "Coups: " + moves;
+                  moves++;
+                  infoCoups.textContent = "Coups: " + moves;
                   let [c1, c2] = opened;
                   if (c1.cardValue === c2.cardValue) {
-                    matchSound.play(); c1.locked = c2.locked = true;
+                    matchSound.play();
+                    c1.locked = c2.locked = true;
                     matchedPairs++;
                     scene.tweens.add({ targets: [c1, c2], scale: 1.12, yoyo: true, duration: 240 });
                     if (matchedPairs === nbPairs) {
@@ -256,11 +266,12 @@ function create() {
                         scaleX: 0, duration: 120,
                         onComplete: () => {
                           [c1, c2].forEach(c => {
-                            c.cardBack.setVisible(true); c.cardFace.setVisible(false); c.flipped = false;
+                            c.cardBack.setVisible(true);
+                            c.cardFace.setVisible(false);
+                            c.flipped = false;
                           });
                           scene.tweens.add({
-                            targets: [c1, c2],
-                            scaleX: 1, duration: 100,
+                            targets: [c1, c2], scaleX: 1, duration: 100,
                             onComplete: () => { opened = []; canClick = true; }
                           });
                         }
@@ -279,35 +290,33 @@ function create() {
   }
 
   // Bouton rejouer
-  document.getElementById('restartBtn').onclick = () => {
+  const restartBtn = document.getElementById('restartBtn');
+  restartBtn.onclick = () => {
     clearInterval(timerEvent);
     game.destroy(true);
     document.getElementById('game-parent').innerHTML = '';
-    setTimeout(() => { startGame(nbPairs); }, 20);
+    setTimeout(() => { startGame(nbPairs); },20);
   };
 }
 
-// ---- Ecrans accueil/jeu ----
-
+// Démarre le jeu (appelé après choix dans l’accueil)
 function startGame(nbPairs) {
-  // Détermine la grille la plus adaptée
-  let { cols, rows } = getPlateau(nbPairs);
+  let {cols, rows} = getPlateau(nbPairs);
   PAIRS = nbPairs; COLS = cols; ROWS = rows;
-
-  // Cache accueil, montre header, vide jeu
   document.getElementById("accueil").style.display = "none";
   document.getElementById("header").style.display = "flex";
   document.getElementById("game-parent").innerHTML = '';
 
-  // Lance le jeu Phaser
-  game = new Phaser.Game(Object.assign(createConfig(cols, rows), {data:{cols, rows, nbPairs}}));
+  game = new Phaser.Game(createConfig(cols, rows, nbPairs));
 }
 
+// Bouton début partie
 document.getElementById('startBtn').onclick = function () {
-  let nbPairs = Math.max(5, Math.min(20, parseInt(document.getElementById('nbPaires').value,10)||20));
+  let nbPairs = Math.max(5, Math.min(20, parseInt(document.getElementById('nbPaires').value,10) || 20));
   startGame(nbPairs);
 };
-// Responsive : relance le jeu avec le même nb de paires si resize
+
+// Sur redimensionnement, relance le jeu avec le même nombre de paires si possible
 window.addEventListener('resize', () => {
   if(game && game.scene && game.scene.scenes[0] && typeof PAIRS !== 'undefined'){
     game.destroy(true);
@@ -315,12 +324,12 @@ window.addEventListener('resize', () => {
     setTimeout(() => { startGame(PAIRS || 20); }, 20);
   }
 });
+
 // Affiche d'abord l'accueil
 window.onload = () => {
   document.getElementById("accueil").style.display = "flex";
   document.getElementById("header").style.display = "none";
 };
-
 </script>
 </body>
 </html>
