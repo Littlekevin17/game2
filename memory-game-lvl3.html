@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Memory F1 - 10 Paires</title>
+  <title>Memory F1 - 15 Paires</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
   <style>
@@ -29,125 +29,149 @@
 </div>
 <div id="game-parent"></div>
 <script>
-  const PAIRS = 15, COLS = 6, ROWS = 5, CARD_RATIO = 3/2, CARD_GAP_RATIO = 0.03;
-  let game, timerIntervalId = null;
+const PAIRS = 15, COLS = 6, ROWS = 5, CARD_RATIO = 3/2, CARD_GAP_RATIO = 0.03;
+let game, timerIntervalId = null;
 
-  function getSizes() {
-    const parent = document.getElementById('game-parent');
-    const w = parent.clientWidth, h = parent.clientHeight;
-    let totalGapW = (COLS - 1) * CARD_GAP_RATIO * w,
-        totalGapH = (ROWS - 1) * CARD_GAP_RATIO * h,
-        cardW = (w - totalGapW) / COLS,
-        cardH = cardW / CARD_RATIO;
-    if (ROWS * cardH + totalGapH > h) { cardH = (h - totalGapH) / ROWS; cardW = cardH * CARD_RATIO; }
-    const gapW = CARD_GAP_RATIO * cardW, gapH = CARD_GAP_RATIO * cardH,
-          boardWidth = COLS * cardW + (COLS -1) * gapW,
-          boardHeight = ROWS * cardH + (ROWS -1) * gapH,
-          startX = (w - boardWidth) / 2 + cardW / 2,
-          startY = (h - boardHeight) / 2 + cardH / 2;
-    return { w, h, cardW, cardH, gapW, gapH, startX, startY };
-  }
+function getSizes() {
+  const parent = document.getElementById('game-parent');
+  const w = parent.clientWidth, h = parent.clientHeight;
+  let totalGapW = (COLS - 1) * CARD_GAP_RATIO * w,
+      totalGapH = (ROWS - 1) * CARD_GAP_RATIO * h,
+      cardW = (w - totalGapW) / COLS,
+      cardH = cardW / CARD_RATIO;
+  if (ROWS * cardH + totalGapH > h) { cardH = (h - totalGapH) / ROWS; cardW = cardH * CARD_RATIO; }
+  const gapW = CARD_GAP_RATIO * cardW, gapH = CARD_GAP_RATIO * cardH,
+        boardWidth = COLS * cardW + (COLS -1) * gapW,
+        boardHeight = ROWS * cardH + (ROWS -1) * gapH,
+        startX = (w - boardWidth) / 2 + cardW / 2,
+        startY = (h - boardHeight) / 2 + cardH / 2;
+  return { w, h, cardW, cardH, gapW, gapH, startX, startY };
+}
 
-  function createConfig() {
-    return {
-      type: Phaser.AUTO, parent: 'game-parent',
-      width: document.getElementById('game-parent').clientWidth,
-      height: document.getElementById('game-parent').clientHeight,
-      backgroundColor: '#243',
-      scene: { preload, create },
-      scale: { mode: Phaser.Scale.NONE, autoCenter: Phaser.Scale.CENTER_BOTH }
-    };
-  }
-
-  function preload() {
-    this.load.image('back','assets/carte-dos.jpg');
-    for(let i=1;i<=PAIRS;i++) this.load.image('face'+i,`assets/${i}.jpg`);
-    this.load.audio('matchSound','sounds/match.mp3');
-    this.load.audio('failSound','sounds/fail.mp3');
-    this.load.audio('winSound','sounds/win.mp3');
-  }
-
-  function create() {
-    const scene = this;
-    const { cardW, cardH, gapW, gapH, startX, startY, w, h } = getSizes();
-    let moves = 0, matchedPairs = 0, timer = 0, opened = [], canClick = true;
-    const infoMoves = document.getElementById('infoMoves'), infoTimer = document.getElementById('infoTimer');
-    infoMoves.textContent='Coups: 0'; infoTimer.textContent='Temps: 0s';
-    if (timerIntervalId) { clearInterval(timerIntervalId); timerIntervalId = null; }
-    timerIntervalId = setInterval(()=>{ timer++; infoTimer.textContent=`Temps: ${timer}s`; },1000);
-    let matchSound=this.sound.add('matchSound'), failSound=this.sound.add('failSound'), winSound=this.sound.add('winSound');
-    const overlay=this.add.rectangle(w/2,h/2,w,h,0x000000,0.5).setDepth(20).setVisible(false),
-          victoryText=this.add.text(w/2,h/2,'',{font:'40px Arial', fill:'#0f0', backgroundColor:'#222d', padding:{left:24,right:24,top:16,bottom:16}, align:'center', wordWrap:{width:w*0.8}}).setOrigin(0.5).setDepth(21).setVisible(false);
-    this.input.once('pointerdown',()=>{ if(this.sound.context.state==='suspended') this.sound.context.resume(); });
-    let values = []; for(let i=1;i<=PAIRS;i++) values.push(i,i); Phaser.Utils.Array.Shuffle(values);
-    for(let y=0; y<ROWS; y++) for(let x=0; x<COLS; x++) {
-      let idx = y * COLS + x;
-      if (idx >= values.length) break;
-      let val = values[idx], posX = startX + x*(cardW + gapW), posY = startY + y*(cardH + gapH),
-          cont = this.add.container(posX,posY),
-          cBack = scene.add.image(0,0,'back').setDisplaySize(cardW,cardH),
-          cFace = scene.add.image(0,0,`face${val}`).setDisplaySize(cardW,cardH).setVisible(false);
-      cont.add([cBack,cFace]); cont.setSize(cardW,cardH); cont.setInteractive();
-      cont.cardValue=val; cont.flipped=false; cont.locked=false; cont.cardBack=cBack; cont.cardFace=cFace;
-      cont.on('pointerdown',()=>{
-        if(!canClick||cont.flipped||cont.locked) return; canClick=false;
-        scene.tweens.add({targets:cont,scaleX:0,duration:120,onComplete:()=>{ cont.cardBack.setVisible(false); cont.cardFace.setVisible(true);
-          scene.tweens.add({targets:cont,scaleX:1,duration:110,onComplete:()=>{
-            cont.flipped=true; opened.push(cont);
-            if(opened.length===2){ moves++; infoMoves.textContent=`Coups: ${moves}`;
-              let [c1,c2]=opened;
-              if(c1.cardValue===c2.cardValue){ matchSound.play(); c1.locked=c2.locked=true; matchedPairs++;
-                scene.tweens.add({targets:[c1,c2],scale:1.12,yoyo:true,duration:250});
-                if(matchedPairs===PAIRS){ clearInterval(timerIntervalId); timerIntervalId=null; winSound.play();
-                  overlay.setVisible(true); victoryText.setText(`Gagné ! 🎉\n${moves} coups, ${timer}s`); victoryText.setVisible(true);
-                  scene.tweens.add({targets: victoryText, scale: 1.12, yoyo:true, duration:320, repeat:2}); canClick=false;}
-                opened=[]; setTimeout(()=>{canClick=true},180);
-              } else {
-                failSound.play();
-                setTimeout(()=>{ scene.tweens.add({targets:[c1,c2],scaleX:0,duration:120,onComplete:()=>{
-                  [c1,c2].forEach(card=>{card.cardBack.setVisible(true);card.cardFace.setVisible(false);card.flipped=false;});
-                  scene.tweens.add({targets:[c1,c2],scaleX:1,duration:100,onComplete:()=>{opened=[];canClick=true;}});
-                }});},500);}
-            } else { canClick=true; }
-          }}); }
-        });
-      });
-    }
-    document.getElementById('restartBtn').onclick = () => {
-      clearInterval(timerIntervalId); timerIntervalId = null; game.destroy(true);
-      document.getElementById('game-parent').innerHTML = '';
-      setTimeout(()=>{ game = new Phaser.Game(createConfig()); },20);
-    };
-  }
-
-  // Plein écran toggle + icône dynamique
-  document.getElementById('fullscreenBtn').onclick = () => {
-    if(!document.fullscreenElement&&!document.webkitFullscreenElement&&!document.mozFullScreenElement&&!document.msFullscreenElement){
-      const elem=document.documentElement;
-      if(elem.requestFullscreen) elem.requestFullscreen();
-      else if(elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
-      else if(elem.mozRequestFullScreen) elem.mozRequestFullScreen();
-      else if(elem.msRequestFullscreen) elem.msRequestFullscreen();
-    } else {
-      if(document.exitFullscreen) document.exitFullscreen();
-      else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
-      else if(document.mozCancelFullScreen) document.mozCancelFullScreen();
-      else if(document.msExitFullscreen) document.msExitFullscreen();
-    }
+function createConfig() {
+  return {
+    type: Phaser.AUTO, parent: 'game-parent',
+    width: document.getElementById('game-parent').clientWidth,
+    height: document.getElementById('game-parent').clientHeight,
+    backgroundColor: '#243',
+    scene: { preload, create },
+    scale: { mode: Phaser.Scale.NONE, autoCenter: Phaser.Scale.CENTER_BOTH }
   };
-  document.addEventListener('fullscreenchange', () => {
-    const btn = document.getElementById('fullscreenBtn');
-    if(document.fullscreenElement) { btn.title = 'Quitter le plein écran'; btn.textContent = '❎'; }
-    else { btn.title = 'Plein écran'; btn.textContent = '🔲'; }
-  });
-  window.addEventListener('resize', () => {
-    if (game) {
-      clearInterval(timerIntervalId); timerIntervalId = null; game.destroy(true);
-      document.getElementById('game-parent').innerHTML = '';
-      setTimeout(() => { game = new Phaser.Game(createConfig()); }, 20);
-    }
-  });
-  window.onload = () => { game = new Phaser.Game(createConfig()); };
+}
+
+function preload() {
+  this.load.image('back','assets/carte-dos.jpg');
+  for(let i=1;i<=PAIRS;i++) this.load.image('face'+i,`assets/${i}.jpg`);
+  this.load.audio('matchSound','sounds/match.mp3');
+  this.load.audio('failSound','sounds/fail.mp3');
+  this.load.audio('winSound','sounds/win.mp3');
+}
+
+function create() {
+  const scene = this;
+  const { cardW, cardH, gapW, gapH, startX, startY, w, h } = getSizes();
+  let moves = 0, matchedPairs = 0, timer = 0, opened = [], canClick = true;
+  const infoMoves = document.getElementById('infoMoves'), infoTimer = document.getElementById('infoTimer');
+  infoMoves.textContent='Coups: 0'; infoTimer.textContent='Temps: 0s';
+  if (timerIntervalId) { clearInterval(timerIntervalId); timerIntervalId = null; }
+  timerIntervalId = setInterval(()=>{ timer++; infoTimer.textContent=`Temps: ${timer}s`; },1000);
+  let matchSound=this.sound.add('matchSound'), failSound=this.sound.add('failSound'), winSound=this.sound.add('winSound');
+  const overlay=this.add.rectangle(w/2,h/2,w,h,0x000000,0.5).setDepth(20).setVisible(false),
+        victoryText=this.add.text(w/2,h/2,'',{font:'40px Arial', fill:'#0f0', backgroundColor:'#222d', padding:{left:24,right:24,top:16,bottom:16}, align:'center', wordWrap:{width:w*0.8}}).setOrigin(0.5).setDepth(21).setVisible(false);
+  this.input.once('pointerdown',()=>{ if(this.sound.context.state==='suspended') this.sound.context.resume(); });
+  let values = []; for(let i=1;i<=PAIRS;i++) values.push(i,i); Phaser.Utils.Array.Shuffle(values);
+  for(let y=0; y<ROWS; y++) for(let x=0; x<COLS; x++) {
+    let idx = y * COLS + x;
+    if (idx >= values.length) break;
+    let val = values[idx], posX = startX + x*(cardW + gapW), posY = startY + y*(cardH + gapH),
+        cont = this.add.container(posX,posY),
+        cBack = scene.add.image(0,0,'back').setDisplaySize(cardW,cardH),
+        cFace = scene.add.image(0,0,`face${val}`).setDisplaySize(cardW,cardH).setVisible(false);
+    cont.add([cBack,cFace]); cont.setSize(cardW,cardH); cont.setInteractive();
+    cont.cardValue=val; cont.flipped=false; cont.locked=false; cont.cardBack=cBack; cont.cardFace=cFace;
+    cont.on('pointerdown', ()=>{
+      if(!canClick || cont.flipped || cont.locked) return; canClick = false;
+      scene.tweens.add({
+        targets: cont, scaleX: 0, duration: 120, onComplete: ()=>{
+          cont.cardBack.setVisible(false); cont.cardFace.setVisible(true);
+          scene.tweens.add({ targets: cont, scaleX:1, duration:110, onComplete:()=>{
+            cont.flipped = true; opened.push(cont);
+            if (opened.length === 2) {
+              moves++; infoMoves.textContent=`Coups: ${moves}`;
+              const [c1,c2] = opened;
+              if (c1.cardValue===c2.cardValue) {
+                matchSound.play(); c1.locked=c2.locked=true; matchedPairs++;
+                scene.tweens.add({targets: [c1,c2], scale:1.12, yoyo:true, duration:250});
+                if(matchedPairs===PAIRS) {
+                  clearInterval(timerIntervalId); timerIntervalId = null; winSound.play();
+                  overlay.setVisible(true); victoryText.setText(`Bravo !\n${moves} coups\n${timer}s`); victoryText.setVisible(true);
+                  scene.tweens.add({ targets: victoryText, scale:1.2, yoyo:true, repeat:4, duration:300 });
+                  canClick = false;
+                }
+                opened=[]; setTimeout(()=>{canClick=true;},200);
+              }
+              else {
+                failSound.play();
+                setTimeout(()=>{
+                  scene.tweens.add({
+                    targets: [c1,c2], scaleX:0, duration:120,
+                    onComplete: ()=>{
+                      [c1,c2].forEach(card=>{ card.cardBack.setVisible(true); card.cardFace.setVisible(false); card.flipped=false; });
+                      scene.tweens.add({ targets:[c1,c2], scaleX:1, duration:100,
+                        onComplete:()=>{opened=[]; canClick=true;}});
+                    }
+                  });
+                },700);
+              }
+            } else canClick=true;
+          }});
+        }
+      });
+    });
+  }
+  document.getElementById('restartBtn').onclick = ()=>{
+    clearInterval(timerIntervalId); timerIntervalId=null;
+    game.destroy(true); document.getElementById('game-parent').innerHTML='';
+    setTimeout(()=>{ game = new Phaser.Game(createConfig()); }, 20);
+  };
+}
+
+document.getElementById('fullscreenBtn').onclick = () => {
+  if (
+    !document.fullscreenElement && !document.webkitFullscreenElement &&
+    !document.mozFullScreenElement && !document.msFullscreenElement
+  ) {
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) elem.requestFullscreen();
+    else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+    else if (elem.mozRequestFullScreen) elem.mozRequestFullScreen();
+    else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
+  } else {
+    if (document.exitFullscreen) document.exitFullscreen();
+    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
+    else if (document.msExitFullscreen) document.msExitFullscreen();
+  }
+};
+
+document.addEventListener('fullscreenchange', () => {
+  const btn = document.getElementById('fullscreenBtn');
+  if (document.fullscreenElement) {
+    btn.title = 'Quitter le plein écran'; btn.textContent = '❎';
+  } else {
+    btn.title = 'Plein écran'; btn.textContent = '🔲';
+  }
+});
+
+window.addEventListener('resize', () => {
+  if (game) {
+    clearInterval(timerIntervalId); timerIntervalId=null;
+    game.destroy(true); document.getElementById('game-parent').innerHTML='';
+    setTimeout(()=>{ game = new Phaser.Game(createConfig()); }, 20);
+  }
+});
+
+window.onload = () => { game = new Phaser.Game(createConfig()); };
 </script>
 </body>
 </html>
