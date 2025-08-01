@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mastermind Mobile - Phaser 3</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            background: #e3f2fd;
+            height: 100%;
+            overflow: hidden;
+        }
+        #phaser-game {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+            touch-action: manipulation;
+        }
+    </style>
+</head>
+<body>
+    <div id="phaser-game"></div>
+    <!-- Charge la lib Phaser CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
+    <script>
+    // Mastermind Phaser 3 - Responsive, Mobile First
+
+const config = {
+    type: Phaser.AUTO,
+    backgroundColor: '#f0f0f0',
+    scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+        parent: 'phaser-game',
+        width: 380,
+        height: 600,
+        min: { width: 320, height: 480 },
+        max: { width: 800, height: 900 }
+    },
+    scene: { preload, create, update },
+    physics: { default: 'arcade' }
+};
+
+const game = new Phaser.Game(config);
+
+function preload() {}
+
+function create() {
+    // Palette de couleurs modernes (pastel)
+    this.colors = [0xe57373, 0x64b5f6, 0xffb74d, 0x81c784, 0xba68c8, 0xffeb3b];
+    this.secret = Phaser.Utils.Array.Shuffle(this.colors.slice()).slice(0, 4);
+
+    this.currentTry = [];
+    this.currentRow = 0;
+    this.feedbackGroup = this.add.group();
+
+    // Orientation device portrait/paysage
+    this.isPortrait = this.sys.game.config.height > this.sys.game.config.width;
+
+    // Calcul position dynamique grille selon l’orientation
+    this.getGridPosition = (row, col) => {
+        let baseX = this.isPortrait ? 60 : 100;
+        let baseY = this.isPortrait ? 60 + row * 50 : 40 + col * 60;
+        return { x: baseX + col * 60, y: baseY };
+    };
+
+    // Grille principale responsive
+    this.grid = [];
+    for (let row = 0; row < 8; row++) {
+        let guessRow = [];
+        for (let col = 0; col < 4; col++) {
+            let pos = this.getGridPosition(row, col);
+            let circle = this.add.circle(pos.x, pos.y, 20, 0xdddddd)
+                .setStrokeStyle(2, 0x888888)
+                .setAlpha(0.95)
+                .setDepth(1)
+                .setShadow(2, 2, '#bbb', 2, false, true);
+            guessRow.push(circle);
+        }
+        this.grid.push(guessRow);
+    }
+
+    // Palette choix couleurs (bas en portrait, à droite en paysage)
+    this.choix = [];
+    let baseX = this.isPortrait ? 60 : this.sys.game.config.width - 280;
+    let baseY = this.isPortrait ? this.sys.game.config.height - 60 : 100;
+    for (let c = 0; c < this.colors.length; c++) {
+        let x = baseX + (this.isPortrait ? c * 50 : 0);
+        let y = baseY + (this.isPortrait ? 0 : c * 50);
+        let circ = this.add.circle(x, y, 20, this.colors[c])
+            .setInteractive({ useHandCursor: true })
+            .setStrokeStyle(3, 0xfafafa)
+            .setShadow(2, 2, '#888', 2, true, true);
+        circ.colorValue = this.colors[c];
+        this.choix.push(circ);
+    }
+
+    // Instructions minimalistes
+    this.instructionText = this.add.text(10, 10, 'Sélectionnez 4 couleurs', {
+        fontSize: '18px',
+        fill: '#333',
+        fontFamily: 'Arial'
+    });
+
+    // Animation/interaction palette
+    this.choix.forEach(circ => {
+        circ.on('pointerdown', () => {
+            if (this.currentTry.length < 4 && !this.disableInput) {
+                // Animation "pop" sur le choix
+                this.tweens.add({
+                    targets: circ,
+                    scale: 1.3,
+                    duration: 100,
+                    yoyo: true
+                });
+
+                // Remplir le cercle dans la grille
+                let circleToFill = this.grid[this.currentRow][this.currentTry.length];
+                circleToFill.setFillStyle(circ.colorValue);
+
+                // Animation "pop" sur la grille
+                this.tweens.add({
+                    targets: circleToFill,
+                    scale: 1.3,
+                    duration: 150,
+                    yoyo: true
+                });
+
+                this.currentTry.push(circ.colorValue);
+                if (this.currentTry.length === 4) this.checkTry();
+            }
+        });
+    });
+
+    // Bouton Nouvelle partie
+    this.resetButton = this.add.text(
+            this.sys.game.config.width / 2, this.sys.game.config.height - 30,
+            'Nouvelle partie',
+            { fontSize: '20px', fill: '#1976d2', fontFamily: 'Arial', backgroundColor: '#bbdefb', padding: 10, align: 'center' })
+        .setInteractive({ useHandCursor: true })
+        .setOrigin(0.5)
+        .setAlpha(0.9)
+        .setDepth(10)
+        .on('pointerdown', () => this.resetGame());
+
+    // Statut/feedback joueur
+    this.statusText = this.add.text(10, this.sys.game.config.height - 60, '', {
+        fontSize: '18px', fill: '#388e3c', fontFamily: 'Arial'
+    });
+
+    // Méthodes logiques portées dans create pour le scope (sinon prototype)
+    this.checkTry = function() {
+        let wellPlaced = 0, misplaced = 0;
+        let tempSecret = [...this.secret];
+        let tempTry = [...this.currentTry];
+
+        // Calcul des couleurs bien placées
+        for (let i = 0; i < 4; i++) {
+            if (tempTry[i] === tempSecret[i]) {
+                wellPlaced++;
+                tempSecret[i] = tempTry[i] = null;
+            }
+        }
+        // Calcul mal placées
+        for (let i = 0; i < 4; i++) {
+            if (tempTry[i] !== null && tempSecret.includes(tempTry[i])) {
+                misplaced++;
+                tempSecret[tempSecret.indexOf(tempTry[i])] = null;
+            }
+        }
+
+        this.afficherFeedback(wellPlaced, misplaced);
+
+        if (wellPlaced === 4) {
+            this.instructionText.setText('Bravo ! Vous avez gagné !');
+            this.statusText.setText('Cliquez sur Nouvelle partie pour rejouer.');
+            this.disableInput = true;
+        } else if (this.currentRow >= 7) {
+            this.instructionText.setText('Partie Terminée! La bonne combinaison était :');
+            this.showSecret();
+            this.statusText.setText('Cliquez sur Nouvelle partie pour rejouer.');
+            this.disableInput = true;
+        } else {
+            this.currentRow++;
+            this.currentTry = [];
+        }
+    };
+
+    this.afficherFeedback = function(bienPlace, malPlace) {
+        this.feedbackGroup.clear(true, true);
+        let baseX = this.isPortrait ? 320 : this.sys.game.config.width - 60;
+        let baseY = this.isPortrait ? 60 + this.currentRow * 50 : 40 + this.currentRow * 60;
+
+        for (let i = 0; i < bienPlace; i++) {
+            const c = this.add.circle(baseX + i * 15, baseY, 6, 0x388e3c);
+            this.feedbackGroup.add(c);
+            this.tweens.add({ targets: c, scale: { from: 0, to: 1 }, duration: 300, ease: 'Back.easeOut' });
+        }
+        for (let i = 0; i < malPlace; i++) {
+            const c = this.add.circle(baseX + (bienPlace + i) * 15, baseY, 6, 0xffb300);
+            this.feedbackGroup.add(c);
+            this.tweens.add({ targets: c, scale: { from: 0, to: 1 }, duration: 300, ease: 'Back.easeOut' });
+        }
+    };
+
+    this.showSecret = function() {
+        for (let i = 0; i < this.secret.length; i++) {
+            let pos = this.getGridPosition(this.currentRow, i);
+            let circ = this.add.circle(pos.x, pos.y, 20, this.secret[i]).setStrokeStyle(3, 0x1976d2);
+            this.tweens.add({
+                targets: circ,
+                alpha: { from: 0, to: 1 }, duration: 500
+            });
+        }
+    };
+
+    this.resetGame = function() {
+        this.secret = Phaser.Utils.Array.Shuffle(this.colors.slice()).slice(0, 4);
+        this.currentTry = [];
+        this.currentRow = 0;
+        this.disableInput = false;
+        this.grid.forEach(row => row.forEach(circle => circle.setFillStyle(0xdddddd)));
+        this.feedbackGroup.clear(true, true);
+        this.instructionText.setText('Sélectionnez 4 couleurs');
+        this.statusText.setText('');
+    };
+}
+
+function update() {
+    // Prêt pour des ajouts de features si besoin (animation, resize, etc.)
+}
+    </script>
+</body>
+</html>
