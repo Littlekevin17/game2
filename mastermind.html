@@ -7,396 +7,328 @@
     <style>
         html, body {
             margin: 0; padding: 0;
-            background: #e3f2fd;
+            background: radial-gradient(circle at 50% 30%, #e3f2fd 80%, #cfd8dc 100%);
             height: 100%;
             overflow: hidden;
             user-select: none;
         }
         #phaser-game {
-            width: 100vw;
-            height: 100vh;
+            width: 100vw; height: 100vh;
             display: block;
             touch-action: manipulation;
         }
-        .fullscreen-warning {
+        #fs-icon {
             position: fixed;
-            bottom: 10px; left: 50%;
-            transform: translateX(-50%);
-            color: #f57c00;
-            font-family: Arial, sans-serif;
-            font-size: 14px;
-            background: #fff3e0;
-            padding: 6px 12px;
-            border-radius: 8px;
-            border: 1px solid #ffb74d;
-            display: none;
-            z-index: 9999;
+            right: 14px; bottom: 20px;
+            width: 44px; height: 44px;
+            background: rgba(240,240,240,0.85);
+            border-radius: 11px;
+            box-shadow: 2px 2px 10px #ccc;
+            display: flex; justify-content: center; align-items: center;
+            z-index: 998;
+            border: 1.5px solid #90caf9;
+            transition: background 0.2s;
+            cursor: pointer;
+        }
+        #fs-icon:hover {
+            background: #ffffff;
+        }
+        #fs-icon svg {
+            width: 26px; height: 26px;
+            fill: #1976d2;
+        }
+        @media (max-width:490px) {
+            #fs-icon { width:36px; height:36px; }
+            #fs-icon svg { width:20px; height:20px; }
         }
     </style>
 </head>
 <body>
     <div id="phaser-game"></div>
-    <div class="fullscreen-warning" id="fs-warning">Activez le plein écran pour une meilleure expérience.</div>
-
+    <!-- Icône carré mode plein écran (SVG vectoriel) -->
+    <div id="fs-icon" title="Plein écran">
+      <svg id="fs-svg" viewBox="0 0 24 24">
+        <rect x="4" y="4" width="16" height="16" rx="4.5"></rect>
+      </svg>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
     <script>
-        const NB_TENTATIVES = 12;
-        const NB_PIONS = 4;
+const NB_TENTATIVES = 12, NB_PIONS = 4;
 
-        const config = {
-            type: Phaser.AUTO,
-            backgroundColor: '#f0f0f0',
-            scale: {
-                mode: Phaser.Scale.FIT,
-                autoCenter: Phaser.Scale.CENTER_BOTH,
-                parent: 'phaser-game',
-                width: 380,
-                height: 700,
-                min: { width: 320, height: 480 },
-                max: { width: 900, height: 1200 }
-            },
-            scene: { preload, create, update }
-        };
+const config = {
+    type: Phaser.AUTO,
+    backgroundColor: '#f0f3fa',
+    scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+        parent: 'phaser-game',
+        width: 380,
+        height: 700,
+        min: { width: 320, height: 480 },
+        max: { width: 900, height: 1200 }
+    },
+    scene: { preload, create, update }
+};
 
-        const game = new Phaser.Game(config);
+const game = new Phaser.Game(config);
 
-        function preload() {}
+function preload() {}
 
-        function create() {
-            this.colors = [0xe57373, 0x64b5f6, 0xffb74d, 0x81c784, 0xba68c8, 0xffeb3b];
-            this.secret = Phaser.Utils.Array.Shuffle(this.colors.slice()).slice(0, NB_PIONS);
+function create() {
+    // ========== Setup palettes, secrets, tableaux de suivi ==========
+    this.colors = [0xe57373, 0x64b5f6, 0xffb74d, 0x81c784, 0xba68c8, 0xffeb3b];
+    this.secret = Phaser.Utils.Array.Shuffle(this.colors.slice()).slice(0, NB_PIONS);
+    this.currentTry = [];
+    this.currentRow = 0;
+    this.disableInput = false;
+    this.grid = [];
+    this.feedbackGrid = [];
 
-            this.currentTry = [];
-            this.currentRow = 0;
-            this.disableInput = false;
-            this.feedbacks = [];
-            this.grid = [];
-            this.feedbackGrid = [];
-            this.placedCircles = [];
+    this.isPortrait = this.sys.game.config.height > this.sys.game.config.width;
+    this.getGridPosition = (row, col) => {
+        let gridWidth = NB_PIONS * 54,
+            startX = (this.sys.game.config.width - gridWidth) / 2,
+            startY = 82;
+        return { x: startX + col * 54, y: startY + row * 45 };
+    };
+    this.getFeedbackPosition = (row) => {
+        let fx = this.sys.game.config.width - 64;
+        let fy = 82 + row * 45;
+        return { x: fx, y: fy };
+    };
 
-            this.isPortrait = this.sys.game.config.height > this.sys.game.config.width;
+    // ========== Grille du plateau jeux & feedbacks persistants ==========
+    for (let row = 0; row < NB_TENTATIVES; row++) {
+        let guessRow = [];
+        for (let col = 0; col < NB_PIONS; col++) {
+            let pos = this.getGridPosition(row, col);
+            let circle = this.add.circle(pos.x, pos.y, 19, 0xffffff)
+                .setStrokeStyle(2.5, 0xaaaebc)
+                .setAlpha(0.97)
+                .setDepth(1)
+                .setShadow && circle.setShadow(3,3,'#ccc',2,false,true);
+            guessRow.push(circle);
+        }
+        this.grid.push(guessRow);
 
-            // Positions grille
-            this.getGridPosition = (row, col) => {
-                let margin = 20,
-                    gridWidth = NB_PIONS * 55,
-                    startX = (this.sys.game.config.width - gridWidth) / 2,
-                    startY = 80;
-                return {
-                    x: startX + col * 55,
-                    y: startY + row * 46
-                };
-            };
-            this.getFeedbackPosition = (row) => {
-                let fx = this.sys.game.config.width - 72;
-                let fy = 80 + row * 46;
-                return { x: fx, y: fy };
-            };
+        // Feedbacks
+        let feedbacks = [];
+        let posF = this.getFeedbackPosition(row);
+        for (let i = 0; i < NB_PIONS; i++) {
+            let dx = (i % 2) * 15, dy = Math.floor(i / 2) * 15;
+            let feedback = this.add.circle(posF.x + dx, posF.y + dy, 7.5, 0xf4f6fd)
+                .setStrokeStyle(1, 0xbbbbbb)
+                .setVisible(false);
+            feedbacks.push(feedback);
+        }
+        this.feedbackGrid.push(feedbacks);
+    }
 
-            // Grille et feedbacks
-            for (let row = 0; row < NB_TENTATIVES; row++) {
-                let guessRow = [];
-                let placedRow = [];
-                for (let col = 0; col < NB_PIONS; col++) {
-                    let pos = this.getGridPosition(row, col);
-                    let circle = this.add.circle(pos.x, pos.y, 19, 0xdddddd)
-                        .setStrokeStyle(2, 0x888888)
-                        .setAlpha(1)
-                        .setDepth(1)
-                        .setInteractive({ useHandCursor: true });
-
-                    // Les pastilles posées peuvent être retirées uniquement pour la ligne en cours
-                    if(row === this.currentRow) {
-                        circle.setData('gridIndex', [row, col]);
-                        circle.on('pointerdown', () => {
-                            if(this.currentRow === row && !this.disableInput) {
-                                this.removePion(row, col);
-                            }
-                        });
-                    }
-                    placedRow.push(circle);
-                    guessRow.push(circle);
-                }
-                this.grid.push(guessRow);
-                this.placedCircles.push(placedRow);
-
-                let feedbacks = [];
-                let posF = this.getFeedbackPosition(row);
-                for (let i = 0; i < NB_PIONS; i++) {
-                    // 2x2 petits cercles feedback
-                    let modx = (i % 2) * 15, mody = Math.floor(i / 2) * 15;
-                    let feedback = this.add.circle(posF.x + modx, posF.y + mody, 7, 0xf0f0f0)
-                                    .setStrokeStyle(1, 0xbbbbbb)
-                                    .setVisible(false);
-                    feedbacks.push(feedback);
-                }
-                this.feedbackGrid.push(feedbacks);
-            }
-
-            // Palette en bas, toujours visible (sous la grille)
-            let paletteBaseY = this.getGridPosition(NB_TENTATIVES - 1, 0).y + 46;
-            let paletteBaseX = (this.sys.game.config.width - this.colors.length * 48) / 2;
-
-            this.choix = [];
-            for (let c = 0; c < this.colors.length; c++) {
-                let x = paletteBaseX + c * 48;
-                let y = paletteBaseY;
-                let circ = this.add.circle(x, y, 21, this.colors[c])
-                    .setInteractive({ useHandCursor: true })
-                    .setStrokeStyle(3, 0xfafafa)
-                    .setAlpha(1);
-                circ.colorValue = this.colors[c];
-                circ.colorIndex = c;
-                this.choix.push(circ);
-            }
-
-            this.instructionText = this.add.text(
-                this.sys.game.config.width / 2, 20,
-                'Sélectionnez 4 couleurs',
-                { fontSize: '18px', fill: '#222', fontFamily: 'Arial', align: 'center' }
-            ).setOrigin(0.5);
-
-            this.tentativeText = this.add.text(
-                this.sys.game.config.width - 20, 50,
-                `Tentative 1/${NB_TENTATIVES}`,
-                { fontSize: '15px', fill: '#607d8b', fontFamily: 'Arial', align: 'right' }
-            ).setOrigin(1, 0.5);
-
-            // Gestion clic sur palette : pas de doublons
-            this.choix.forEach(circ => {
-                circ.on('pointerdown', () => {
-                    if (this.currentTry.length < NB_PIONS && !this.disableInput && !this.currentTry.includes(circ.colorValue)) {
-                        this.tweens.add({
-                            targets: circ,
-                            scale: 1.25,
-                            duration: 100,
-                            yoyo: true
-                        });
-                        let circleToFill = this.grid[this.currentRow][this.currentTry.length];
-                        circleToFill.setFillStyle(circ.colorValue);
-                        circleToFill.setData('filled', circ.colorValue);
-                        circleToFill.setData('myCol', this.currentTry.length);
-
-                        // Pastille clickable pour retirer (différée)
-                        circleToFill.removeAllListeners('pointerdown');
-                        circleToFill.on('pointerdown', () => {
-                            this.removePion(this.currentRow, circleToFill.getData('myCol'));
-                        });
-
-                        this.currentTry.push(circ.colorValue);
-                        circ.setAlpha(0.5); // désactive couleur utilisée
-
-                        if (this.currentTry.length === NB_PIONS) this.checkTry();
-                    }
-                });
-            });
-
-            // Fonction de retrait d'une pastille sur grille courante
-            this.removePion = (row, colIdx) => {
-                if (this.currentRow !== row || this.disableInput) return;
-                let removedColor = this.grid[row][colIdx].getData('filled');
-                if (removedColor == null) return;
-
-                this.currentTry.splice(colIdx, 1);
-                this.grid[row][colIdx].setFillStyle(0xdddddd);
-                this.grid[row][colIdx].setData('filled', null);
-
-                // Décale vers la gauche les autres pions pour éviter "trous"
-                for (let c = colIdx + 1; c < NB_PIONS; c++) {
-                    let val = this.grid[row][c].getData('filled');
-                    this.grid[row][c - 1].setFillStyle(val ? val : 0xdddddd);
-                    this.grid[row][c - 1].setData('filled', val || null);
-                    this.grid[row][c].setFillStyle(0xdddddd);
-                    this.grid[row][c].setData('filled', null);
-                }
-
-                // Réactive la couleur dans palette
-                this.choix.forEach(cc => {
-                    if (cc.colorValue === removedColor) cc.setAlpha(1);
-                });
-
-                // Réassocie événements pointerdown sur pastilles restantes
-                for (let k = 0; k < NB_PIONS; k++) {
-                    this.grid[row][k].removeAllListeners('pointerdown');
-                    if (this.grid[row][k].getData('filled')) {
-                        this.grid[row][k].setData('myCol', k);
-                        this.grid[row][k].on('pointerdown', () => this.removePion(row, k));
-                    }
-                }
-            };
-
-            // Bouton "Nouvelle partie" en bas sous palette
-            this.resetButton = this.add.text(
-                this.sys.game.config.width / 2,
-                paletteBaseY + 52,
-                'Nouvelle partie',
-                { fontSize: '20px', fill: '#1976d2', fontFamily: 'Arial', backgroundColor: '#bbdefb', padding: 10, align: 'center' }
-            )
+    // ========== Palette couleurs EN BAS ==========
+    let paletteY = this.getGridPosition(NB_TENTATIVES-1, 0).y + 47;
+    let paletteX = (this.sys.game.config.width - this.colors.length * 47) / 2;
+    this.choix = [];
+    for (let c = 0; c < this.colors.length; c++) {
+        let x = paletteX + c * 47, y = paletteY;
+        let circ = this.add.circle(x, y, 22, this.colors[c])
             .setInteractive({ useHandCursor: true })
-            .setOrigin(0.5)
-            .setAlpha(0.95)
-            .setDepth(10)
-            .on('pointerdown', () => this.resetGame());
+            .setStrokeStyle(3.6, 0xffffff)
+            .setAlpha(1);
+        circ.colorValue = this.colors[c];
+        circ.colorIndex = c;
+        this.choix.push(circ);
+    }
 
-            // Bouton "Plein écran" sous Nouvelle partie
-            this.fullScreenButton = this.add.text(
-                this.sys.game.config.width / 2,
-                paletteBaseY + 100,
-                'Plein écran',
-                { fontSize: '18px', fill: '#f57c00', fontFamily: 'Arial', backgroundColor: '#ffe0b2', padding: 8, align: 'center' }
-            )
-            .setInteractive({ useHandCursor: true })
-            .setOrigin(0.5)
-            .setAlpha(0.95)
-            .setDepth(10)
-            .on('pointerdown', () => {
-                if (!this.scale.isFullscreen) {
-                    this.scale.startFullscreen();
-                } else {
-                    this.scale.stopFullscreen();
-                }
-            });
+    // ========== EN-TÊTES & feedback tentative ==========
+    this.instructionText = this.add.text(
+        this.sys.game.config.width/2, 22,
+        'Sélectionnez 4 couleurs',
+        { fontSize: '18px', fill: '#1a237e', fontFamily: 'Arial', align: 'center', fontStyle:'bold', shadow:{color:'#789',fill:true, blur:2, offsetX:1, offsetY:1}}
+    ).setOrigin(0.5);
 
-            // Status text
-            this.statusText = this.add.text(
-                18, this.sys.game.config.height - 90,
-                '',
-                { fontSize: '16px', fill: '#388e3c', fontFamily: 'Arial' }
-            );
+    this.tentativeText = this.add.text(
+        this.sys.game.config.width - 24, 54,
+        `Essai 1/${NB_TENTATIVES}`,
+        { fontSize: '15px', fill: '#1976d2', fontFamily: 'Arial', align: 'right', fontStyle:'bold' }
+    ).setOrigin(1, 0.5);
 
-            // Warn user to activate fullscreen (optional)
-            this.isFullscreenWarning = document.getElementById('fs-warning');
-
-            // Logiques du jeu
-            this.checkTry = function () {
-                let wellPlaced = 0, misplaced = 0;
-                let tempSecret = [...this.secret];
-                let tempTry = [...this.currentTry];
-
-                // Calcul couleurs bien placées
-                for (let i = 0; i < NB_PIONS; i++) {
-                    if (tempTry[i] === tempSecret[i]) {
-                        wellPlaced++;
-                        tempSecret[i] = tempTry[i] = null;
-                    }
-                }
-
-                // Calcul couleurs mal placées
-                for (let i = 0; i < NB_PIONS; i++) {
-                    if (tempTry[i] !== null && tempSecret.includes(tempTry[i])) {
-                        misplaced++;
-                        tempSecret[tempSecret.indexOf(tempTry[i])] = null;
-                    }
-                }
-
-                this.showFeedback(this.currentRow, wellPlaced, misplaced);
-
-                if (wellPlaced === NB_PIONS) {
-                    this.instructionText.setText('Bravo ! Code trouvé !');
-                    this.statusText.setText('Clique sur Nouvelle partie pour rejouer.');
-                    this.disableInput = true;
-                } else if (this.currentRow >= NB_TENTATIVES - 1) {
-                    this.instructionText.setText('Perdu ! Code :');
-                    this.showSecret();
-                    this.statusText.setText('Clique sur Nouvelle partie pour rejouer.');
-                    this.disableInput = true;
-                } else {
-                    this.currentRow++;
-                    this.currentTry = [];
-                    this.tentativeText.setText(`Tentative ${this.currentRow + 1}/${NB_TENTATIVES}`);
-
-                    // Réactive palette couleurs
-                    this.choix.forEach(cc => cc.setAlpha(1));
-
-                    // Permet d'effacer les anciens listeners pastilles ligne précédente
-                    this.grid[this.currentRow].forEach((circle, idx) => {
-                        circle.removeAllListeners('pointerdown');
-                        circle.setData('filled', null);
-                        circle.setFillStyle(0xdddddd);
-                        circle.setInteractive({ useHandCursor: true });
-                        // Ajoute nouveau listener pour retrait
-                        circle.on('pointerdown', () => {
-                            if(this.currentRow === this.currentRow && !this.disableInput) this.removePion(this.currentRow, idx);
-                        });
-                    });
-                }
-            };
-
-            this.showFeedback = function (row, wellPlaced, misplaced) {
-                let feedbacks = this.feedbackGrid[row];
-                let total = 0;
-                // Pastilles noires (bien placées)
-                for (let i = 0; i < wellPlaced && total < NB_PIONS; i++, total++) {
-                    feedbacks[total].setFillStyle(0x222222).setVisible(true);
-                    this.tweens.add({ targets: feedbacks[total], scale: { from: 0.3, to: 1 }, duration: 180 });
-                }
-                // Pastilles blanches (mal placées)
-                for (let i = 0; i < misplaced && total < NB_PIONS; i++, total++) {
-                    feedbacks[total].setFillStyle(0xffffff).setVisible(true);
-                    this.tweens.add({ targets: feedbacks[total], scale: { from: 0.3, to: 1 }, duration: 150 });
-                }
-            };
-
-            this.showSecret = function () {
-                for (let i = 0; i < this.secret.length; i++) {
-                    let pos = this.getGridPosition(this.currentRow, i);
-                    let circ = this.add.circle(pos.x, pos.y, 19, this.secret[i]).setStrokeStyle(4, 0x1976d2);
-                    circ.setDepth(9);
-                    this.tweens.add({
-                        targets: circ,
-                        alpha: { from: 0, to: 1 }, duration: 500
-                    });
-                }
-            };
-
-            this.resetGame = function () {
-                this.secret = Phaser.Utils.Array.Shuffle(this.colors.slice()).slice(0, NB_PIONS);
-                this.currentTry = [];
-                this.currentRow = 0;
-                this.disableInput = false;
-                this.grid.forEach(row => row.forEach(circle => {
-                    circle.setFillStyle(0xdddddd);
-                    circle.setData('filled', null);
-                    circle.removeAllListeners('pointerdown');
-                }));
-                for (let row = 0; row < NB_TENTATIVES; row++) {
-                    for (let f = 0; f < NB_PIONS; f++) {
-                        this.feedbackGrid[row][f].setVisible(false).setFillStyle(0xf0f0f0);
-                    }
-                }
-                this.statusText.setText('');
-                this.instructionText.setText('Sélectionnez 4 couleurs');
-                this.tentativeText.setText(`Tentative 1/${NB_TENTATIVES}`);
-
-                this.choix.forEach(cc => cc.setAlpha(1));
-
-                // Réassocie listener sur la ligne 0 pour retirer pastilles
-                this.grid[0].forEach((circ, idx) => {
-                    circ.setInteractive({ useHandCursor: true });
-                    circ.on('pointerdown', () => {
-                        if(!this.disableInput) this.removePion(0, idx);
-                    });
-                });
-            };
-
-            // Initialise le jeu
-            this.resetGame();
-
-            // Affiche message si pas en plein écran sur mobile (optionnel)
-            if (!this.scale.isFullscreen && /(android|iphone|ipad|mobile)/i.test(navigator.userAgent)) {
-                this.isFullscreenWarning.style.display = 'block';
+    // ========== CLIC sur la palette couleurs ========== (pas de doublons)
+    this.currentTry = [];
+    this.gridFills = Array(NB_PIONS).fill(null);
+    this.choix.forEach(circ => {
+        circ.on('pointerdown', () => {
+            if(this.disableInput) return;
+            if(this.currentTry.length < NB_PIONS && !this.currentTry.includes(circ.colorValue)) {
+                this.tweens.add({ targets:circ, scale:1.15, duration:80, yoyo:true });
+                let idx = this.currentTry.length;
+                let cell = this.grid[this.currentRow][idx];
+                cell.setFillStyle(circ.colorValue).setData('filled', circ.colorValue);
+                this.currentTry.push(circ.colorValue);
+                circ.setAlpha(0.43);
+                // Ajoute pour suppression (retirer pastille via clic)
+                cell.removeAllListeners('pointerdown');
+                cell.setInteractive({ useHandCursor:true });
+                cell.on('pointerdown', () => { this.removePion(this.currentRow, idx); });
+                if(this.currentTry.length === NB_PIONS) this.checkTry();
             }
-            this.scale.on('enterfullscreen', () => {
-                this.isFullscreenWarning.style.display = 'none';
-            });
-            this.scale.on('leavefullscreen', () => {
-                if (/(android|iphone|ipad|mobile)/i.test(navigator.userAgent)) {
-                    this.isFullscreenWarning.style.display = 'block';
-                }
+        });
+    });
+
+    // ========== Retrait pastille posée (clic sur la grille) ==========
+    this.removePion = (row, colIdx) => {
+        if (this.currentRow !== row || this.disableInput) return;
+        let removedColor = this.grid[row][colIdx].getData('filled');
+        if (!removedColor) return;
+        // Retire couleur à cet index
+        this.currentTry.splice(colIdx, 1);
+        this.grid[row][colIdx].setFillStyle(0xffffff).setData('filled',null);
+        // Décale à gauche ce qu'il faut
+        for (let c = colIdx + 1; c < NB_PIONS; c++) {
+            let val = this.grid[row][c].getData('filled');
+            this.grid[row][c-1].setFillStyle(val ? val : 0xffffff);
+            this.grid[row][c-1].setData('filled', val||null);
+            this.grid[row][c].setFillStyle(0xffffff).setData('filled', null);
+        }
+        // Réactive couleur palette
+        this.choix.forEach(cc => cc.colorValue === removedColor && cc.setAlpha(1));
+        // Réassocie listener correct
+        for(let k = 0; k < NB_PIONS; k++) {
+            this.grid[row][k].removeAllListeners('pointerdown');
+            if(this.grid[row][k].getData('filled')) {
+                this.grid[row][k].setInteractive({useHandCursor:true});
+                this.grid[row][k].on('pointerdown', () => { this.removePion(row,k); });
+            }
+        }
+    };
+
+    // ========== Bouton "Nouvelle partie", en dessous palette ==========
+    this.resetButton = this.add.text(
+        this.sys.game.config.width/2, paletteY + 54,
+        'Nouvelle partie',
+        { fontSize: '20px', fill: '#1976d2', fontFamily: 'Arial', backgroundColor: '#bbdefb', padding:10, align:'center', borderRadius:9 }
+    )
+    .setInteractive({ useHandCursor: true })
+    .setOrigin(0.5)
+    .setAlpha(0.98)
+    .setDepth(10)
+    .on('pointerdown', () => this.resetGame());
+
+    // ========== Feedback corrects noirs/blancs persistants ==========
+    this.checkTry = function() {
+        let wellPlaced = 0, misplaced = 0;
+        let tempSecret = [...this.secret];
+        let tempTry = [...this.currentTry];
+        for (let i = 0; i < NB_PIONS; i++) {
+            if(tempTry[i] === tempSecret[i]) {
+                wellPlaced++; tempSecret[i] = tempTry[i]=null;
+            }
+        }
+        for (let i = 0; i < NB_PIONS; i++) {
+            if(tempTry[i]!=null && tempSecret.includes(tempTry[i])) {
+                misplaced++; tempSecret[tempSecret.indexOf(tempTry[i])]=null;
+            }
+        }
+        this.showFeedback(this.currentRow, wellPlaced, misplaced);
+        if (wellPlaced === NB_PIONS) {
+            this.instructionText.setText('Bravo\u00A0! Code trouvé !');
+            this.statusText.setText('Clique sur Nouvelle partie pour rejouer.');
+            this.disableInput = true;
+        } else if (this.currentRow >= NB_TENTATIVES - 1) {
+            this.instructionText.setText('Perdu ! Code :');
+            this.showSecret();
+            this.statusText.setText('Clique sur Nouvelle partie pour rejouer.');
+            this.disableInput = true;
+        } else {
+            this.currentRow++; this.currentTry = [];
+            this.tentativeText.setText(`Essai ${this.currentRow+1}/${NB_TENTATIVES}`);
+            this.choix.forEach(cc => cc.setAlpha(1));
+            // Réinitialise les listeners pour la nouvelle ligne
+            this.grid[this.currentRow].forEach((cell,idx) => {
+                cell.removeAllListeners('pointerdown');
+                cell.setInteractive({useHandCursor:true});
+                cell.on('pointerdown', () => { this.removePion(this.currentRow, idx); });
+                cell.setFillStyle(0xffffff);
+                cell.setData('filled', null);
             });
         }
+    };
 
-        function update() {}
+    this.showFeedback = function(row, wellPlaced, misplaced) {
+        let feedbacks = this.feedbackGrid[row];
+        let total = 0;
+        for (let i=0; i<wellPlaced && total<NB_PIONS; i++,total++)
+            feedbacks[total].setFillStyle(0x222222).setVisible(true);
+        for (let i=0; i<misplaced && total<NB_PIONS; i++,total++)
+            feedbacks[total].setFillStyle(0xffffff).setVisible(true);
+    };
+    this.showSecret = function() {
+        for(let i=0; i<N_B_PIONS; i++) {
+            let pos = this.getGridPosition(this.currentRow, i);
+            let circ = this.add.circle(pos.x, pos.y, 19, this.secret[i])
+                .setStrokeStyle(4, 0x1976d2).setDepth(9);
+        }
+    };
+    this.resetGame = function() {
+        this.secret = Phaser.Utils.Array.Shuffle(this.colors.slice()).slice(0,NB_PIONS);
+        this.currentTry = []; this.currentRow = 0; this.disableInput = false;
+        this.grid.forEach(row => row.forEach(cell => { cell.setFillStyle(0xffffff); cell.setData('filled',null); cell.removeAllListeners('pointerdown'); }));
+        for (let row=0; row<NB_TENTATIVES; row++)
+            for (let f=0; f<NB_PIONS; f++)
+                this.feedbackGrid[row][f].setVisible(false).setFillStyle(0xf4f6fd);
+        if (this.statusText) this.statusText.setText('');
+        this.instructionText.setText('Sélectionnez 4 couleurs');
+        this.tentativeText.setText(`Essai 1/${NB_TENTATIVES}`);
+        this.choix.forEach(cc => cc.setAlpha(1));
+        // Listeners ligne 0
+        this.grid[0].forEach((circ,idx) => {
+            circ.setInteractive({ useHandCursor:true });
+            circ.on('pointerdown', () => {
+                if(!this.disableInput) this.removePion(0,idx);
+            });
+        });
+    };
+
+    // ========== Footer de status, en bas gauche, discret ==========
+    this.statusText = this.add.text(
+        18, this.sys.game.config.height - 82,
+        '', { fontSize: '15px', fill: '#388e3c', fontFamily:'Arial' }
+    );
+
+    // Initialisation
+    this.resetGame();
+}
+
+function update() {}
+
+
+// ========== Gestion du bouton carré plein écran natif ==========
+const fsIcon = document.getElementById('fs-icon');
+const fsSVG = document.getElementById('fs-svg');
+
+function toggleFullscreen() {
+    let g = game, s = g.scale;
+    if (!s.isFullscreen) {
+        s.startFullscreen();
+        // Change icône pour sortie
+        fsSVG.innerHTML = '<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="3.5" stroke="#1976d2" stroke-width="2.2" fill="none"/></svg>';
+    } else {
+        s.stopFullscreen();
+        // Change icône pour entrée
+        fsSVG.innerHTML = '<rect x="4" y="4" width="16" height="16" rx="4.5"></rect>';
+    }
+}
+
+fsIcon.addEventListener('click', function(e){
+    e.preventDefault();
+    toggleFullscreen();
+});
+
+document.addEventListener("fullscreenchange", function(){
+    let s = game.scale;
+    if (!s.isFullscreen) {
+        fsSVG.innerHTML = '<rect x="4" y="4" width="16" height="16" rx="4.5"></rect>';
+    }
+});
     </script>
 </body>
 </html>
