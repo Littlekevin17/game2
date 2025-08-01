@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mastermind Design - Phaser 3</title>
+  <style>
+    html, body {
+      margin: 0; padding: 0;
+      /* Dégradé bleu-gris parfait pour voir noir & blanc */
+      background: linear-gradient(135deg, #5c85ae 0%, #8eb2ce 50%, #497299 100%);
+      height: 100vh;
+      overflow: hidden;
+      user-select: none;
+    }
+    #phaser-game {
+      width: 100vw; height: 100vh;
+      display: block;
+      touch-action: manipulation;
+    }
+    #fs-icon {
+      position: fixed;
+      right: 14px; bottom: 20px;
+      width: 44px; height: 44px;
+      background: rgba(220,230,255,0.93);
+      border-radius: 12px;
+      box-shadow: 2px 2px 14px #4e627e;
+      display: flex; justify-content: center; align-items: center;
+      z-index: 998;
+      border: 1.5px solid #4fa9f7;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.2s;
+    }
+    #fs-icon:hover { background: #fff; }
+    #fs-icon svg { width: 26px; height: 26px; fill: #2370c8; }
+    @media (max-width:490px) {
+      #fs-icon { width:36px; height:36px; }
+      #fs-icon svg { width:20px; height:20px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="phaser-game"></div>
+  <div id="fs-icon" title="Plein écran">
+    <svg id="fs-svg" viewBox="0 0 24 24">
+      <rect x="4" y="4" width="16" height="16" rx="4.5"></rect>
+    </svg>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
+  <script>
+const NB_TENTATIVES = 12, NB_PIONS = 4;
+const COULEURS = [
+  { code:0xe57373, nom:'rouge' }, { code:0x64b5f6, nom:'bleu' },
+  { code:0xffb74d, nom:'orange' }, { code:0x81c784, nom:'vert' },
+  { code:0xba68c8, nom:'violet' }, { code:0xffeb3b, nom:'jaune' }
+];
+
+// Configuration visuelle pions/feedbacks
+const PION_SIZE = 38, PION_DISP = 38, GRID_STEP_X = 43, GRID_STEP_Y = 32;
+const FEED_SIZE = 15, FEED_DISP = 15, FEED_STEP = 16;
+const PALETTE_SIZE = 33, PALETTE_DISP = 33, PALETTE_STEP = 36;
+
+const config = {
+  type: Phaser.AUTO,
+  backgroundColor: '#5878a0',
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+    parent: 'phaser-game',
+    width: 390,
+    height: 750,
+    min: { width: 320, height: 480 },
+    max: { width: 900, height: 1500 }
+  },
+  scene: { preload, create, update }
+};
+
+const game = new Phaser.Game(config);
+
+function createPionTexture(scene, color, key) {
+  let g = scene.add.graphics();
+  g.fillStyle(0x000000, 0.13); g.fillCircle(PION_SIZE/2+2, PION_SIZE/2+6, PION_SIZE/2-2);
+  g.fillStyle(color, 1); g.fillCircle(PION_SIZE/2, PION_SIZE/2, PION_SIZE/2-2.5);
+  g.fillStyle(0xffffff, 0.19); g.fillEllipse(PION_SIZE/2+4, PION_SIZE/2-4, PION_SIZE/3, PION_SIZE/8);
+  g.generateTexture(key, PION_SIZE, PION_SIZE); g.destroy();
+}
+function createFeedbackTexture(scene, color, key) {
+  let g = scene.add.graphics();
+  g.fillStyle(0x3c587a,0.15); g.fillCircle(FEED_SIZE/2+2, FEED_SIZE/2+3, FEED_SIZE/2-2.5);
+  g.fillStyle(color,1); g.fillCircle(FEED_SIZE/2, FEED_SIZE/2, FEED_SIZE/2-1.7);
+  g.fillStyle(0xffffff, color==0x222222?0.12:0.20); g.fillEllipse(FEED_SIZE/2+1.8, FEED_SIZE/2-1, FEED_SIZE/2.5, FEED_SIZE/8);
+  g.generateTexture(key, FEED_SIZE, FEED_SIZE); g.destroy();
+}
+
+function preload() {}
+
+function create() {
+  // Textures pions/feedbacks
+  COULEURS.forEach(c=>createPionTexture(this,c.code,'pion_'+c.nom));
+  createPionTexture(this, 0xeaf0fa, 'pion_blanc'); // neutre doux
+  createFeedbackTexture(this, 0x222222, 'feed_noir');
+  createFeedbackTexture(this, 0xffffff, 'feed_blanc');
+  createFeedbackTexture(this, 0xe4ebf4, 'feed_neutre');
+
+  this.colors = COULEURS.map(c=>c.code);
+  this.secret = Phaser.Utils.Array.Shuffle(this.colors.slice()).slice(0, NB_PIONS);
+  this.currentTry = [];
+  this.currentRow = 0;
+  this.disableInput = false;
+  this.grid = [];
+  this.feedbackGrid = [];
+
+  this.getGridPosition = (row, col) => {
+    const gridWidth = NB_PIONS * GRID_STEP_X;
+    const startX = (this.sys.game.config.width - gridWidth) / 2;
+    const startY = 100;
+    return { x: startX + col * GRID_STEP_X, y: startY + row * GRID_STEP_Y };
+  };
+  this.getFeedbackPosition = (row) => {
+    const fx = this.sys.game.config.width - 42;
+    const fy = 100 + row * GRID_STEP_Y;
+    return { x: fx, y: fy };
+  };
+
+  // Grille et feedbacks spacés intermédiaire
+  for (let row = 0; row < NB_TENTATIVES; row++) {
+    let guessRow = [];
+    for (let col = 0; col < NB_PIONS; col++) {
+      let pos = this.getGridPosition(row, col);
+      let cell = this.add.image(pos.x, pos.y, 'pion_blanc')
+        .setDisplaySize(PION_DISP, PION_DISP)
+        .setAlpha(0.99)
+        .setDepth(1)
+        .setData({filled:null});
+      guessRow.push(cell);
+    }
+    this.grid.push(guessRow);
+
+    let feedbacks = [];
+    let posF = this.getFeedbackPosition(row);
+    for (let i = 0; i < NB_PIONS; i++) {
+      let dx = (i % 2) * FEED_STEP, dy = Math.floor(i / 2) * FEED_STEP;
+      let feedback = this.add.image(posF.x + dx, posF.y + dy, 'feed_neutre')
+        .setDisplaySize(FEED_DISP, FEED_DISP)
+        .setVisible(false);
+      feedbacks.push(feedback);
+    }
+    this.feedbackGrid.push(feedbacks);
+  }
+
+  // Palette sous la grille
+  const paletteY = this.getGridPosition(NB_TENTATIVES - 1, 0).y + 48;
+  const paletteX = (this.sys.game.config.width - COULEURS.length * PALETTE_STEP) / 2;
+  this.choix = [];
+  COULEURS.forEach((c, i) => {
+    let x = paletteX + i * PALETTE_STEP, y = paletteY;
+    let circ = this.add.image(x, y, 'pion_'+c.nom)
+      .setDisplaySize(PALETTE_DISP, PALETTE_DISP)
+      .setInteractive({ useHandCursor: true })
+      .setAlpha(1)
+      .setData({color:c.code});
+    this.choix.push(circ);
+  });
+
+  // En-tête élégant
+  this.instructionText = this.add.text(
+    this.sys.game.config.width / 2, 32,
+    'Sélectionnez 4 couleurs',
+    { fontSize: '21px', fill: '#153460', fontFamily: 'Arial', align: 'center', fontStyle: 'bold', shadow: { color: '#e2e8f7', fill: true, blur: 3, offsetX: 1, offsetY: 1 } }
+  ).setOrigin(0.5);
+
+  this.tentativeText = this.add.text(
+    this.sys.game.config.width - 24, 74,
+    `Essai 1/${NB_TENTATIVES}`,
+    { fontSize: '15.5px', fill: '#fffdf8', fontFamily: 'Arial', align: 'right', fontStyle: 'bold', shadow:{ color:'#4176b9', fill:true, blur:2, offsetX:0, offsetY:1 } }
+  ).setOrigin(1, 0.5);
+
+  // Palette, interdiction doublon
+  this.choix.forEach(circ => {
+    circ.on('pointerdown', () => {
+      if (this.disableInput) return;
+      const color = circ.getData('color');
+      if (this.currentTry.length < NB_PIONS && !this.currentTry.includes(color)) {
+        this.tweens.add({ targets: circ, scale: 1.09, duration: 60, yoyo: true });
+        const idx = this.currentTry.length;
+        const cell = this.grid[this.currentRow][idx];
+        cell.setTexture('pion_'+COULEURS.find(c=>c.code === color).nom).setData('filled', color);
+        this.currentTry.push(color);
+        circ.setAlpha(0.35);
+        // Click pour suppression du pion
+        cell.removeAllListeners('pointerdown');
+        cell.setInteractive({ useHandCursor: true });
+        cell.on('pointerdown', () => { this.removePion(this.currentRow, idx); });
+
+        if (this.currentTry.length === NB_PIONS) this.checkTry();
+      }
+    });
+  });
+
+  // Suppression pastille
+  this.removePion = (row, colIdx) => {
+    if (this.currentRow !== row || this.disableInput) return;
+    const removedColor = this.grid[row][colIdx].getData('filled');
+    if (!removedColor) return;
+    this.currentTry.splice(colIdx, 1);
+    for (let c = colIdx; c < NB_PIONS; c++) {
+      const val = c < this.currentTry.length ? this.currentTry[c] : null;
+      const gcell = this.grid[row][c];
+      if(val) {
+        const nom = COULEURS.find(cc => cc.code === val).nom;
+        gcell.setTexture('pion_'+nom).setData('filled', val);
+      } else {
+        gcell.setTexture('pion_blanc').setData('filled', null);
+      }
+      gcell.removeAllListeners('pointerdown');
+      if(val) {
+        gcell.setInteractive({ useHandCursor: true });
+        gcell.on('pointerdown', () => this.removePion(row, c));
+      }
+    }
+    this.choix.forEach(cc => { if(cc.getData('color') === removedColor) cc.setAlpha(1); });
+  };
+
+  // Nouvelle partie
+  this.resetButton = this.add.text(
+    this.sys.game.config.width / 2, paletteY + 42,
+    'Nouvelle partie',
+    { fontSize: '19px', fill: '#fff', fontFamily: 'Arial', backgroundColor: '#277ad0', padding: 10, align: 'center', borderRadius: 9,
+      shadow:{ color:'#115dad', fill:true, blur:4, offsetX:0, offsetY:2 }
+    }
+  )
+    .setInteractive({ useHandCursor: true })
+    .setOrigin(0.5)
+    .setAlpha(0.96)
+    .setDepth(10)
+    .on('pointerdown', () => this.resetGame());
+
+  // Affichage feedbacks
+  this.showFeedback = (row, wellPlaced, misplaced) => {
+    const feedbacks = this.feedbackGrid[row];
+    let total = 0;
+    for(let i=0; i<wellPlaced && total<NB_PIONS; i++, total++) {
+      feedbacks[total].setTexture('feed_noir').setVisible(true);
+    }
+    for(let i=0; i<misplaced && total<NB_PIONS; i++, total++) {
+      feedbacks[total].setTexture('feed_blanc').setVisible(true);
+    }
+  };
+
+  // Affiche code (fin partie perdu)
+  this.showSecret = () => {
+    for(let i=0; i<this.secret.length; i++) {
+      let pos = this.getGridPosition(this.currentRow, i);
+      let nom = COULEURS.find(c=>c.code===this.secret[i]).nom;
+      let circ = this.add.image(pos.x, pos.y, 'pion_'+nom)
+        .setDisplaySize(PION_DISP, PION_DISP)
+        .setDepth(19)
+        .setAlpha(0);
+      this.tweens.add({ targets: circ, alpha: { from:0, to:1 }, duration: 620 });
+    }
+  };
+
+  this.checkTry = () => {
+    let wellPlaced = 0, misplaced = 0;
+    let tempSecret = [...this.secret];
+    let tempTry = [...this.currentTry];
+    for(let i=0; i<NB_PIONS; i++) {
+      if(tempTry[i] === tempSecret[i]) {
+        wellPlaced++; tempSecret[i]=tempTry[i]=null;
+      }
+    }
+    for(let i=0; i<NB_PIONS; i++) {
+      if(tempTry[i] != null && tempSecret.includes(tempTry[i])) {
+        misplaced++; tempSecret[tempSecret.indexOf(tempTry[i])] = null;
+      }
+    }
+    this.showFeedback(this.currentRow, wellPlaced, misplaced);
+    if(wellPlaced === NB_PIONS) {
+      this.instructionText.setText('Bravo\u00A0! Code trouvé !');
+      this.disableInput = true;
+    } else if(this.currentRow >= NB_TENTATIVES-1) {
+      this.instructionText.setText('Perdu ! Code :');
+      this.showSecret();
+      this.disableInput = true;
+    } else {
+      this.currentRow++;
+      this.currentTry = [];
+      this.tentativeText.setText(`Essai ${this.currentRow+1}/${NB_TENTATIVES}`);
+      this.choix.forEach(cc=>cc.setAlpha(1));
+      this.grid[this.currentRow].forEach((cell, idx) => {
+        cell.setTexture('pion_blanc').setData('filled', null);
+        cell.removeAllListeners('pointerdown');
+        cell.setInteractive({useHandCursor:true});
+        cell.on('pointerdown', () => { if(!this.disableInput) this.removePion(this.currentRow, idx); });
+      });
+    }
+  };
+
+  this.resetGame = () => {
+    this.secret = Phaser.Utils.Array.Shuffle(this.colors.slice()).slice(0, NB_PIONS);
+    this.currentTry = [];
+    this.currentRow = 0;
+    this.disableInput = false;
+    if(this.grid && Array.isArray(this.grid)) {
+      this.grid.forEach(row => {
+        if(Array.isArray(row)) row.forEach(cell => {
+          if(cell && cell.setTexture) {
+            cell.setTexture('pion_blanc');
+            cell.setData('filled', null);
+            cell.removeAllListeners('pointerdown');
+            cell.setInteractive({useHandCursor:true});
+          }
+        });
+      });
+    }
+    if(this.feedbackGrid && Array.isArray(this.feedbackGrid)) {
+      this.feedbackGrid.forEach(row => {
+        if(Array.isArray(row)) row.forEach(feedback => {
+          if(feedback && feedback.setVisible) {
+            feedback.setVisible(false);
+            feedback.setTexture('feed_neutre');
+          }
+        });
+      });
+    }
+    this.instructionText.setText('Sélectionnez 4 couleurs');
+    this.tentativeText.setText(`Essai 1/${NB_TENTATIVES}`);
+    this.choix.forEach(cc => cc.setAlpha(1));
+    if(this.grid[0]) {
+      this.grid[0].forEach((cell, idx) => {
+        cell.setInteractive({ useHandCursor:true });
+        cell.on('pointerdown', () => { if(!this.disableInput) this.removePion(0, idx); });
+      });
+    }
+  };
+  this.resetGame();
+}
+
+function update() {}
+
+const fsIcon = document.getElementById('fs-icon');
+const fsSVG = document.getElementById('fs-svg');
+function toggleFullscreen() {
+  const s = game.scale;
+  if (!s.isFullscreen) {
+    s.startFullscreen();
+    fsSVG.innerHTML = '<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="3.5" stroke="#2370c8" stroke-width="2.2" fill="none"/></svg>';
+  } else {
+    s.stopFullscreen();
+    fsSVG.innerHTML = '<rect x="4" y="4" width="16" height="16" rx="4.5"></rect>';
+  }
+}
+fsIcon.addEventListener('click', e => { e.preventDefault(); toggleFullscreen(); });
+document.addEventListener('fullscreenchange', () => {
+  if (!game.scale.isFullscreen) {
+    fsSVG.innerHTML = '<rect x="4" y="4" width="16" height="16" rx="4.5"></rect>';
+  }
+});
+  </script>
+</body>
+        </html>
+        
