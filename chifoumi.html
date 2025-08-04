@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pierre-Feuille-Ciseaux</title>
+    <!-- Inclut Tailwind CSS pour un style rapide et responsive -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Définit une police de caractères -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap">
+    <style>
+        /* Styles personnalisés pour la mise en page et les animations */
+        body {
+            font-family: 'Inter', sans-serif;
+            @apply flex flex-col justify-center items-center min-h-screen bg-gray-100 text-gray-800 p-4;
+        }
+
+        /* Conteneur principal du jeu */
+        .game-container {
+            @apply bg-white p-6 rounded-2xl shadow-xl max-w-lg w-full flex flex-col gap-6;
+        }
+
+        h1 {
+            @apply text-4xl font-bold text-center text-purple-700 mb-4;
+        }
+
+        .score-display {
+            @apply flex justify-around items-center text-xl font-bold bg-purple-100 p-4 rounded-xl;
+        }
+        
+        .score-display span {
+            @apply text-purple-700;
+        }
+
+        .choices {
+            @apply flex justify-center gap-4 flex-wrap;
+        }
+
+        .choice-button {
+            @apply flex flex-col items-center justify-center p-6 bg-purple-600 text-white rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 hover:bg-purple-700 active:scale-95;
+            width: calc(33.33% - 1rem); /* 3 boutons par ligne avec espacement */
+            min-width: 100px;
+        }
+
+        /* Effet d'icône inversée pour les boutons */
+        .choice-button img {
+            filter: invert(100%);
+            @apply w-12 h-12 mb-2;
+        }
+
+        .result-display {
+            @apply text-center text-lg bg-gray-200 p-4 rounded-xl;
+        }
+
+        #resultText {
+            @apply text-2xl font-bold mt-2;
+        }
+
+        .reset-button {
+            @apply bg-red-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 hover:bg-red-600 active:scale-95;
+        }
+
+        /* Media Queries pour la responsivité */
+        @media (max-width: 768px) {
+            h1 { @apply text-3xl; }
+            .choice-button {
+                width: calc(50% - 0.5rem); /* 2 boutons par ligne sur tablette */
+                @apply p-4;
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 { @apply text-2xl; }
+            .choice-button {
+                width: 100%; /* 1 bouton par ligne sur mobile */
+                @apply p-5;
+            }
+        }
+
+        /* Styles spécifiques pour le mode paysage sur mobile */
+        @media screen and (orientation: landscape) and (max-height: 600px) {
+            body { @apply p-2; }
+            .game-container {
+                @apply flex-row items-stretch overflow-auto p-4 gap-2 h-screen;
+            }
+            .choices {
+                @apply flex-col;
+            }
+            .choice-button {
+                width: 100%;
+                @apply flex-row justify-start p-3;
+            }
+            .choice-button img {
+                @apply w-8 h-8 mr-2;
+            }
+            h1, .score-display, .result-display, .reset-button {
+                @apply flex-shrink-0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <h1>Pierre-Feuille-Ciseaux</h1>
+
+        <div class="score-display">
+            <p>Joueur: <span id="playerScore">0</span></p>
+            <p>Ordinateur: <span id="computerScore">0</span></p>
+        </div>
+
+        <div class="choices">
+            <button id="pierre" class="choice-button">
+                <img src="https://img.icons8.com/ios-filled/50/000000/rock.png" alt="Pierre">
+                <span>Pierre</span>
+            </button>
+            <button id="feuille" class="choice-button">
+                <img src="https://img.icons8.com/ios-filled/50/000000/paper.png" alt="Feuille">
+                <span>Feuille</span>
+            </button>
+            <button id="ciseaux" class="choice-button">
+                <img src="https://img.icons8.com/ios-filled/50/000000/scissors.png" alt="Ciseaux">
+                <span>Ciseaux</span>
+            </button>
+        </div>
+
+        <div class="result-display">
+            <p id="playerChoiceDisplay">Votre choix: -</p>
+            <p id="computerChoiceDisplay">Choix de l'ordinateur: -</p>
+            <p id="resultText" class="text-gray-600">Cliquez sur une option pour commencer !</p>
+        </div>
+
+        <button id="resetButton" class="reset-button">Rejouer</button>
+    </div>
+
+    <script>
+        // Le script JavaScript du jeu
+        document.addEventListener('DOMContentLoaded', () => {
+            // Sélecteurs d'éléments du DOM
+            const playerButtons = document.querySelectorAll('.choice-button');
+            const playerScoreSpan = document.getElementById('playerScore');
+            const computerScoreSpan = document.getElementById('computerScore');
+            const playerChoiceDisplay = document.getElementById('playerChoiceDisplay');
+            const computerChoiceDisplay = document.getElementById('computerChoiceDisplay');
+            const resultText = document.getElementById('resultText');
+            const resetButton = document.getElementById('resetButton');
+
+            // Initialisation des scores
+            let playerScore = 0;
+            let computerScore = 0;
+
+            // Options du jeu
+            const choices = ['pierre', 'feuille', 'ciseaux'];
+
+            /**
+             * Choisit aléatoirement une option pour l'ordinateur.
+             * @returns {string} Le choix de l'ordinateur.
+             */
+            function getComputerChoice() {
+                const randomIndex = Math.floor(Math.random() * choices.length);
+                return choices[randomIndex];
+            }
+
+            /**
+             * Détermine le gagnant du tour.
+             * @param {string} playerChoice Le choix du joueur.
+             * @param {string} computerChoice Le choix de l'ordinateur.
+             * @returns {string} 'gagné', 'perdu' ou 'égalité'.
+             */
+            function determineWinner(playerChoice, computerChoice) {
+                if (playerChoice === computerChoice) {
+                    return 'égalité';
+                }
+                if (
+                    (playerChoice === 'pierre' && computerChoice === 'ciseaux') ||
+                    (playerChoice === 'feuille' && computerChoice === 'pierre') ||
+                    (playerChoice === 'ciseaux' && computerChoice === 'feuille')
+                ) {
+                    return 'gagné';
+                }
+                return 'perdu';
+            }
+
+            /**
+             * Met à jour l'interface du jeu après un tour.
+             * @param {string} playerChoice Le choix du joueur.
+             * @param {string} computerChoice Le choix de l'ordinateur.
+             * @param {string} result Le résultat du tour.
+             */
+            function updateGame(playerChoice, computerChoice, result) {
+                // Met à jour les affichages des choix
+                playerChoiceDisplay.textContent = `Votre choix: ${playerChoice.charAt(0).toUpperCase() + playerChoice.slice(1)}`;
+                computerChoiceDisplay.textContent = `Choix de l'ordinateur: ${computerChoice.charAt(0).toUpperCase() + computerChoice.slice(1)}`;
+
+                // Met à jour le texte du résultat et les scores
+                if (result === 'gagné') {
+                    playerScore++;
+                    resultText.textContent = 'Vous avez gagné ! 🎉';
+                    resultText.className = 'text-2xl font-bold mt-2 text-green-600';
+                } else if (result === 'perdu') {
+                    computerScore++;
+                    resultText.textContent = 'Vous avez perdu... �';
+                    resultText.className = 'text-2xl font-bold mt-2 text-red-600';
+                } else {
+                    resultText.textContent = 'Égalité ! 🤝';
+                    resultText.className = 'text-2xl font-bold mt-2 text-yellow-600';
+                }
+
+                playerScoreSpan.textContent = playerScore;
+                computerScoreSpan.textContent = computerScore;
+            }
+
+            /**
+             * Gère un tour de jeu complet lorsqu'un bouton est cliqué.
+             * @param {Event} event L'événement de clic.
+             */
+            function playRound(event) {
+                const playerChoice = event.currentTarget.id;
+                const computerChoice = getComputerChoice();
+                const result = determineWinner(playerChoice, computerChoice);
+                updateGame(playerChoice, computerChoice, result);
+            }
+
+            /**
+             * Réinitialise le jeu à son état initial.
+             */
+            function resetGame() {
+                playerScore = 0;
+                computerScore = 0;
+                playerScoreSpan.textContent = playerScore;
+                computerScoreSpan.textContent = computerScore;
+                playerChoiceDisplay.textContent = 'Votre choix: -';
+                computerChoiceDisplay.textContent = 'Choix de l\'ordinateur: -';
+                resultText.textContent = 'Cliquez sur une option pour commencer !';
+                resultText.className = 'text-2xl font-bold mt-2 text-gray-600';
+            }
+
+            // Ajoute des écouteurs d'événements aux boutons de choix et de réinitialisation
+            playerButtons.forEach(button => {
+                button.addEventListener('click', playRound);
+            });
+            resetButton.addEventListener('click', resetGame);
+        });
+    </script>
+</body>
+</html>
