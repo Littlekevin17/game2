@@ -35,6 +35,7 @@
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             flex-direction: column;
+            position: relative; /* Pour positionner l'écran de démarrage */
         }
 
         .game-container {
@@ -140,6 +141,46 @@
             100% { transform: scale(1); }
         }
 
+        /* Styles pour l'écran de démarrage */
+        .start-menu {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 1;
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        .start-menu.hidden {
+            opacity: 0;
+            pointer-events: none; /* Empêche les clics lorsque masqué */
+        }
+
+        .start-menu-content {
+            background-color: var(--card-bg-color);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 90%;
+            max-width: 400px;
+        }
+
+        .start-menu-content h2 {
+            margin-top: 0;
+            font-size: 1.5rem;
+            color: var(--primary-color);
+        }
+
         /* Règle CSS pour les petits écrans afin de maximiser l'espace */
         @media (max-width: 650px) {
             body {
@@ -147,6 +188,9 @@
             }
             .game-container {
                 padding: 20px;
+            }
+            .start-menu-content {
+                padding: 30px;
             }
         }
     </style>
@@ -159,6 +203,14 @@
     </div>
     <canvas id="gameCanvas"></canvas>
     <div class="controls">
+        <button id="resetButton" style="display: none;">Recommencer la partie</button>
+    </div>
+</div>
+
+<!-- Nouvel écran de démarrage -->
+<div id="startMenu" class="start-menu">
+    <div class="start-menu-content">
+        <h2>Choisissez votre mode de jeu</h2>
         <div class="controls-row">
             <button id="modeTwoPlayersButton" class="active">2 Joueurs</button>
             <button id="modeAIButton">Contre l'IA</button>
@@ -171,7 +223,7 @@
                 <option value="hard">Difficile</option>
             </select>
         </div>
-        <button id="resetButton">Recommencer la partie</button>
+        <button id="startButton">Commencer la partie</button>
     </div>
 </div>
 
@@ -187,36 +239,66 @@
     let gameMode = 'twoPlayers'; // 'twoPlayers' ou 'vsAI'
     let aiDifficulty = 'easy'; // 'easy', 'medium', 'hard'
     let isAITurn = false;
+    
+    // Variables pour l'algorithme Minimax (ajustées)
+    const MAX_DEPTH = 5; // Augmentation de la profondeur d'anticipation pour l'IA difficile
 
     // Récupération des éléments du DOM
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     const messageElement = document.getElementById('message');
     const resetButton = document.getElementById('resetButton');
+
+    // Éléments de l'écran de démarrage
+    const startMenu = document.getElementById('startMenu');
+    const startButton = document.getElementById('startButton');
     const modeTwoPlayersButton = document.getElementById('modeTwoPlayersButton');
     const modeAIButton = document.getElementById('modeAIButton');
     const difficultyControls = document.getElementById('difficultyControls');
     const difficultySelect = document.getElementById('difficultySelect');
 
     // Mettre en place le canevas et commencer le jeu
-    window.addEventListener('load', setup);
-    window.addEventListener('resize', setup);
+    window.addEventListener('load', () => {
+        // Initialiser le jeu et le plateau dès le chargement de la page
+        setupGame();
+        // Puis afficher le menu de démarrage
+        showStartMenu();
+    });
+    window.addEventListener('resize', setupCanvas);
+    window.addEventListener('orientationchange', setupCanvas);
     canvas.addEventListener('click', handleUserClick);
-    resetButton.addEventListener('click', setup);
+    resetButton.addEventListener('click', showStartMenu);
+    startButton.addEventListener('click', startGame);
     modeTwoPlayersButton.addEventListener('click', () => setGameMode('twoPlayers'));
     modeAIButton.addEventListener('click', () => setGameMode('vsAI'));
-    difficultySelect.addEventListener('change', (e) => {
-        aiDifficulty = e.target.value;
-        setup();
-    });
+    difficultySelect.addEventListener('change', (e) => aiDifficulty = e.target.value);
 
-    // Empêche le défilement de l'écran sur les appareils tactiles lors du déplacement sur le canevas
+    // Empêche le défilement de l'écran sur les appareils tactiles
     canvas.addEventListener('touchmove', (event) => {
         event.preventDefault();
     }, { passive: false });
 
     /**
-     * @description Définit le mode de jeu (2 joueurs ou contre l'IA) et réinitialise la partie.
+     * @description Affiche l'écran de démarrage pour choisir le mode de jeu.
+     */
+    function showStartMenu() {
+        startMenu.classList.remove('hidden');
+        resetButton.style.display = 'none'; // Masquer le bouton de réinitialisation
+        // S'assurer que le canevas est redimensionné correctement
+        setupCanvas();
+    }
+
+    /**
+     * @description Démarre la partie en cachant l'écran de démarrage.
+     */
+    function startGame() {
+        startMenu.classList.add('hidden');
+        resetButton.style.display = 'block'; // Afficher le bouton de réinitialisation
+        setupGame();
+    }
+
+    /**
+     * @description Définit le mode de jeu (2 joueurs ou contre l'IA).
      * @param {string} mode Le mode de jeu à définir ('twoPlayers' ou 'vsAI').
      */
     function setGameMode(mode) {
@@ -230,36 +312,12 @@
             modeAIButton.classList.remove('active');
             difficultyControls.style.display = 'none';
         }
-        setup();
     }
 
     /**
-     * @description Initialise ou réinitialise le jeu et le canevas.
-     * Cette fonction est appelée au chargement de la page et lors du redimensionnement.
+     * @description Initialise ou réinitialise l'état du jeu.
      */
-    function setup() {
-        // Redimensionner le canevas de manière dynamique en fonction de l'espace disponible
-        const container = canvas.parentElement;
-        const containerWidth = container.clientWidth;
-        const containerHeight = container.clientHeight;
-        
-        const availableHeight = containerHeight - 
-                                document.querySelector('.status-container').offsetHeight - 
-                                document.querySelector('.controls').offsetHeight - 
-                                40; // Marge supplémentaire pour le padding
-
-        const cell_size_by_width = Math.floor((containerWidth - (cols + 1) * padding) / cols);
-        const cell_size_by_height = Math.floor((availableHeight - (rows + 1) * padding) / rows);
-        cell_size = Math.min(cell_size_by_width, cell_size_by_height);
-        
-        if (cell_size <= 0) {
-            cell_size = 30;
-        }
-        
-        canvas.width = cols * cell_size + (cols + 1) * padding;
-        canvas.height = rows * cell_size + (rows + 1) * padding;
-        
-        // Initialiser l'état du jeu
+    function setupGame() {
         board = createBoard();
         currentPlayer = 1;
         game_over = false;
@@ -267,6 +325,29 @@
         
         messageElement.textContent = "C'est au tour du joueur 1 !";
         messageElement.className = 'player1-turn';
+        drawBoard();
+    }
+
+    /**
+     * @description Calcule et ajuste la taille du canevas pour qu'il s'adapte à l'écran.
+     */
+    function setupCanvas() {
+        // Le canevas est redimensionné pour s'adapter à la largeur de son conteneur parent.
+        const containerWidth = canvas.parentElement.clientWidth;
+        const availableWidth = containerWidth - (30 * 2); // 30px de padding à gauche et à droite
+        
+        // La taille de la cellule est calculée pour que la grille tienne dans l'espace disponible
+        const cell_size_by_width = Math.floor((availableWidth - (cols - 1) * padding) / cols);
+        cell_size = cell_size_by_width;
+
+        if (cell_size <= 0) {
+            cell_size = 30; // Valeur de repli au cas où le calcul serait négatif ou nul
+        }
+        
+        // Mise à jour de la largeur et de la hauteur du canevas
+        canvas.width = cols * cell_size + (cols + 1) * padding;
+        canvas.height = rows * cell_size + (rows + 1) * padding;
+
         drawBoard();
     }
 
@@ -417,10 +498,22 @@
                 bestCol = chooseRandomMove();
                 break;
             case 'medium':
-                bestCol = chooseMediumMove();
+                // Pour le mode "moyen", l'IA se concentre sur les coups de victoire et de blocage immédiat
+                let winningMove = findWinningMove(2);
+                if (winningMove !== null) {
+                    bestCol = winningMove;
+                } else {
+                    let blockingMove = findWinningMove(1);
+                    if (blockingMove !== null) {
+                        bestCol = blockingMove;
+                    } else {
+                        bestCol = chooseRandomMove();
+                    }
+                }
                 break;
             case 'hard':
-                bestCol = chooseHardMove();
+                // Pour le mode "difficile", l'IA utilise l'algorithme Minimax pour anticiper
+                bestCol = minimax(board, MAX_DEPTH, -Infinity, Infinity, true).column;
                 break;
         }
 
@@ -451,130 +544,7 @@
         }
         return null;
     }
-
-    /**
-     * @description L'IA choisit un coup en mode "moyen".
-     * @returns {number | null} La colonne choisie ou null si aucune colonne n'est disponible.
-     */
-    function chooseMediumMove() {
-        // 1. Vérifier si l'IA peut gagner
-        let winningMove = findWinningMove(2);
-        if (winningMove !== null) return winningMove;
-        
-        // 2. Vérifier si le joueur peut gagner et le bloquer
-        let blockingMove = findWinningMove(1);
-        if (blockingMove !== null) return blockingMove;
-        
-        // 3. Sinon, jouer aléatoirement
-        return chooseRandomMove();
-    }
     
-    /**
-     * @description L'IA choisit un coup en mode "difficile".
-     * @returns {number | null} La colonne choisie ou null si aucune colonne n'est disponible.
-     */
-    function chooseHardMove() {
-        let bestScore = -Infinity;
-        let bestMove = null;
-        const validCols = [];
-        for (let c = 0; c < cols; c++) {
-            if (board[0][c] === 0) {
-                validCols.push(c);
-            }
-        }
-
-        // Si aucune colonne n'est disponible, il n'y a pas de coup possible
-        if (validCols.length === 0) return null;
-
-        for (let col of validCols) {
-            // Simuler le coup
-            const tempBoard = JSON.parse(JSON.stringify(board));
-            let row;
-            for (let r = rows - 1; r >= 0; r--) {
-                if (tempBoard[r][col] === 0) {
-                    tempBoard[r][col] = 2;
-                    row = r;
-                    break;
-                }
-            }
-            
-            const score = evaluateBoard(tempBoard, row, col);
-            if (score > bestScore) {
-                bestScore = score;
-                bestMove = col;
-            }
-        }
-        return bestMove;
-    }
-
-    /**
-     * @description Évalue le plateau de jeu pour l'IA (difficile).
-     * @param {Array<Array<number>>} board Le tableau de jeu.
-     * @param {number} lastRow La dernière ligne jouée.
-     * @param {number} lastCol La dernière colonne jouée.
-     * @returns {number} Un score d'évaluation.
-     */
-    function evaluateBoard(board, lastRow, lastCol) {
-        // Le score est basé sur le nombre de jetons consécutifs
-        let score = 0;
-        const winningScore = 10000;
-        const blockingScore = 1000;
-        const threateningScore = 50;
-
-        // Vérifier si l'IA gagne avec ce coup
-        if (checkWinOnTempBoard(board, lastRow, lastCol, 2)) {
-            return winningScore;
-        }
-
-        // Vérifier si l'adversaire gagne et bloquer
-        let opponentWin = findWinningMove(1);
-        if (opponentWin !== null) {
-            score += blockingScore;
-        }
-
-        // Vérifier les menaces de 3-en-ligne et les opportunités pour l'IA
-        score += countThreats(board, 2) * threateningScore; // Créer une ligne de 3
-        score -= countThreats(board, 1) * (threateningScore / 2); // Bloquer une ligne de 3 du joueur
-
-        // Favoriser le centre du plateau
-        score += (Math.abs(lastCol - 3)) * -2;
-        
-        return score;
-    }
-    
-    /**
-     * @description Compte les menaces (lignes de 3 jetons non bloquées) pour un joueur donné.
-     * @param {Array<Array<number>>} board Le tableau de jeu.
-     * @param {number} player Le joueur à vérifier (1 ou 2).
-     * @returns {number} Le nombre de menaces.
-     */
-    function countThreats(board, player) {
-        let count = 0;
-        for (let r = 0; r < rows; r++) {
-            for (let c = 0; c < cols; c++) {
-                if (board[r][c] === player) {
-                    // Horizontal
-                    if (c + 2 < cols && board[r][c+1] === player && board[r][c+2] === player && (c - 1 < 0 || board[r][c-1] === 0) && (c + 3 >= cols || board[r][c+3] === 0)) {
-                        count++;
-                    }
-                    // Vertical
-                    if (r + 2 < rows && board[r+1][c] === player && board[r+2][c] === player && (r - 1 < 0 || board[r-1][c] === 0)) {
-                        count++;
-                    }
-                    // Diagonal /
-                    if (r + 2 < rows && c + 2 < cols && board[r+1][c+1] === player && board[r+2][c+2] === player && (r - 1 < 0 || c - 1 < 0 || board[r-1][c-1] === 0)) {
-                        count++;
-                    }
-                    // Diagonal \
-                    if (r + 2 < rows && c - 2 >= 0 && board[r+1][c-1] === player && board[r+2][c-2] === player && (r - 1 < 0 || c + 1 >= cols || board[r-1][c+1] === 0)) {
-                        count++;
-                    }
-                }
-            }
-        }
-        return count;
-    }
-
     /**
      * @description Trouve un coup gagnant pour un joueur donné.
      * @param {number} player Le joueur à vérifier (1 ou 2).
@@ -596,7 +566,219 @@
         }
         return null;
     }
+    
+    /**
+     * @description Implémente l'algorithme Minimax pour le mode difficile.
+     * @param {Array<Array<number>>} nodeBoard Le tableau de jeu actuel.
+     * @param {number} depth La profondeur de recherche restante.
+     * @param {number} alpha Meilleur score pour le joueur maximisant.
+     * @param {number} beta Meilleur score pour le joueur minimisant.
+     * @param {boolean} isMaximizingPlayer Vrai si c'est le tour de l'IA (maximisation), faux sinon.
+     * @returns {{column: number, score: number}} Le meilleur coup et son score.
+     */
+    function minimax(nodeBoard, depth, alpha, beta, isMaximizingPlayer) {
+        const validCols = getValidColumns(nodeBoard);
+        const score = scoreBoard(nodeBoard);
 
+        // Conditions d'arrêt de la récursion
+        if (depth === 0 || gameIsOver(nodeBoard)) {
+            return { column: null, score: score };
+        }
+        
+        // Si le plateau est évalué comme gagnant ou perdant, on retourne les scores instantanés.
+        if (score >= 100000) return { column: null, score: score };
+        if (score <= -100000) return { column: null, score: score };
+
+        if (isMaximizingPlayer) { // C'est le tour de l'IA (joueur 2)
+            let bestScore = -Infinity;
+            let bestColumn = validCols[0];
+            
+            for (const col of validCols) {
+                const tempBoard = dropPieceOnBoard(nodeBoard, col, 2);
+                
+                const evaluation = minimax(tempBoard, depth - 1, alpha, beta, false);
+                if (evaluation.score > bestScore) {
+                    bestScore = evaluation.score;
+                    bestColumn = col;
+                }
+                alpha = Math.max(alpha, bestScore);
+                if (alpha >= beta) {
+                    break; // Élagage Alpha-Beta
+                }
+            }
+            return { column: bestColumn, score: bestScore };
+        } else { // C'est le tour de l'humain (joueur 1)
+            let bestScore = Infinity;
+            let bestColumn = validCols[0];
+            
+            for (const col of validCols) {
+                const tempBoard = dropPieceOnBoard(nodeBoard, col, 1);
+                
+                const evaluation = minimax(tempBoard, depth - 1, alpha, beta, true);
+                if (evaluation.score < bestScore) {
+                    bestScore = evaluation.score;
+                    bestColumn = col;
+                }
+                beta = Math.min(beta, bestScore);
+                if (alpha >= beta) {
+                    break; // Élagage Alpha-Beta
+                }
+            }
+            return { column: bestColumn, score: bestScore };
+        }
+    }
+
+    /**
+     * @description Évalue un plateau de jeu pour l'IA.
+     * @param {Array<Array<number>>} boardToScore Le tableau de jeu à évaluer.
+     * @returns {number} Le score d'évaluation.
+     */
+    function scoreBoard(boardToScore) {
+        let score = 0;
+
+        // Score basé sur le centre du plateau, car c'est une position stratégique
+        const centerCol = Math.floor(cols / 2);
+        for (let r = 0; r < rows; r++) {
+            if (boardToScore[r][centerCol] === 2) score += 3;
+        }
+
+        // Score basé sur les fenêtres de 4 jetons
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                // Vérifier les fenêtres horizontales
+                if (c <= cols - 4) {
+                    const window = boardToScore[r].slice(c, c + 4);
+                    score += evaluateWindow(window);
+                }
+                // Vérifier les fenêtres verticales
+                if (r <= rows - 4) {
+                    const window = [boardToScore[r][c], boardToScore[r + 1][c], boardToScore[r + 2][c], boardToScore[r + 3][c]];
+                    score += evaluateWindow(window);
+                }
+                // Vérifier les fenêtres diagonales (montantes)
+                if (c <= cols - 4 && r <= rows - 4) {
+                    const window = [boardToScore[r][c], boardToScore[r + 1][c + 1], boardToScore[r + 2][c + 2], boardToScore[r + 3][c + 3]];
+                    score += evaluateWindow(window);
+                }
+                // Vérifier les fenêtres diagonales (descendantes)
+                if (c >= 3 && r <= rows - 4) {
+                    const window = [boardToScore[r][c], boardToScore[r + 1][c - 1], boardToScore[r + 2][c - 2], boardToScore[r + 3][c - 3]];
+                    score += evaluateWindow(window);
+                }
+            }
+        }
+
+        return score;
+    }
+    
+    /**
+     * @description Évalue une fenêtre de 4 jetons avec des scores plus agressifs.
+     * @param {Array<number>} window La fenêtre de 4 jetons.
+     * @returns {number} Le score de la fenêtre.
+     */
+    function evaluateWindow(window) {
+        let score = 0;
+        const player1Count = window.filter(piece => piece === 1).length;
+        const player2Count = window.filter(piece => piece === 2).length;
+        const emptyCount = window.filter(piece => piece === 0).length;
+
+        // Si l'IA a une ligne de 4, c'est une victoire
+        if (player2Count === 4) {
+            score += 100000;
+        } 
+        // Si l'IA a une ligne de 3 avec une case vide, c'est une menace très forte
+        else if (player2Count === 3 && emptyCount === 1) {
+            score += 5000;
+        } 
+        // Si l'IA a une ligne de 2 avec deux cases vides
+        else if (player2Count === 2 && emptyCount === 2) {
+            score += 500;
+        }
+
+        // Si l'adversaire a une ligne de 4, c'est une défaite imminente
+        if (player1Count === 4) {
+            score -= 100000;
+        } 
+        // Si l'adversaire a une ligne de 3 avec une case vide, c'est une menace à bloquer
+        else if (player1Count === 3 && emptyCount === 1) {
+            score -= 5000;
+        } 
+        // Si l'adversaire a une ligne de 2 avec deux cases vides
+        else if (player1Count === 2 && emptyCount === 2) {
+            score -= 500;
+        }
+
+        return score;
+    }
+
+    /**
+     * @description Vérifie si le jeu est terminé (victoire ou match nul).
+     * @param {Array<Array<number>>} boardToTest Le tableau de jeu.
+     * @returns {boolean} Vrai si le jeu est terminé, sinon Faux.
+     */
+    function gameIsOver(boardToTest) {
+        // Vérifie les victoires de l'IA et du joueur
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                if (boardToTest[r][c] !== 0) {
+                    if (checkWinOnTempBoard(boardToTest, r, c, boardToTest[r][c])) {
+                        return true;
+                    }
+                }
+            }
+        }
+        // Vérifie si le plateau est plein
+        return boardToTest[0].every(cell => cell !== 0);
+    }
+    
+    /**
+     * @description Obtient les colonnes valides pour un coup.
+     * @param {Array<Array<number>>} boardToTest Le tableau de jeu.
+     * @returns {Array<number>} Les indices des colonnes valides.
+     */
+    function getValidColumns(boardToTest) {
+        const validCols = [];
+        for (let c = 0; c < cols; c++) {
+            if (boardToTest[0][c] === 0) {
+                validCols.push(c);
+            }
+        }
+        return validCols;
+    }
+
+    /**
+     * @description Obtient la première ligne vide dans une colonne.
+     * @param {Array<Array<number>>} boardToTest Le tableau de jeu.
+     * @param {number} col La colonne.
+     * @returns {number} L'indice de la ligne vide.
+     */
+    function getNextEmptyRow(boardToTest, col) {
+        for (let r = rows - 1; r >= 0; r--) {
+            if (boardToTest[r][col] === 0) {
+                return r;
+            }
+        }
+        return -1;
+    }
+    
+    /**
+     * @description Simule le placement d'une pièce sur un plateau temporaire.
+     * @param {Array<Array<number>>} boardToTest Le tableau de jeu.
+     * @param {number} col La colonne où placer le jeton.
+     * @param {number} player Le joueur.
+     * @returns {Array<Array<number>>} Une nouvelle copie du plateau avec la pièce placée.
+     */
+    function dropPieceOnBoard(boardToTest, col, player) {
+        const newBoard = JSON.parse(JSON.stringify(boardToTest));
+        for (let r = rows - 1; r >= 0; r--) {
+            if (newBoard[r][col] === 0) {
+                newBoard[r][col] = player;
+                return newBoard;
+            }
+        }
+        return newBoard;
+    }
+    
     /**
      * @description Vérifie si la partie est un match nul (le plateau est plein).
      * @returns {boolean} Vrai si le jeu est un match nul, sinon Faux.
