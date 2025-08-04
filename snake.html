@@ -291,6 +291,10 @@
 
                 if (direction.x === 0 && direction.y === 0) {
                     startText.destroy();
+                    // Lancer le mode plein écran sur la première interaction de l'utilisateur
+                    if (!this.scale.isFullscreen) {
+                        this.scale.startFullscreen();
+                    }
                 }
 
                 if (Math.abs(diffX) > Math.abs(diffY)) { // Mouvement horizontal
@@ -312,6 +316,10 @@
 
                     if (direction.x === 0 && direction.y === 0) {
                         startText.destroy();
+                        // Lancer le mode plein écran sur la première interaction de l'utilisateur
+                        if (!this.scale.isFullscreen) {
+                            this.scale.startFullscreen();
+                        }
                     }
 
                     if (dir === 'up' && lastDirection.y === 0) direction.set(0, -1);
@@ -340,15 +348,31 @@
             if (cursors.left.isDown && lastDirection.x === 0) {
                 direction.set(-1, 0);
                 lastDirection.copy(direction);
+                // Lancer le mode plein écran sur la première interaction clavier
+                if (!this.scale.isFullscreen && direction.x !== 0 && direction.y !== 0) {
+                    this.scale.startFullscreen();
+                }
             } else if (cursors.right.isDown && lastDirection.x === 0) {
                 direction.set(1, 0);
                 lastDirection.copy(direction);
+                // Lancer le mode plein écran sur la première interaction clavier
+                if (!this.scale.isFullscreen && direction.x !== 0 && direction.y !== 0) {
+                    this.scale.startFullscreen();
+                }
             } else if (cursors.up.isDown && lastDirection.y === 0) {
                 direction.set(0, -1);
                 lastDirection.copy(direction);
+                // Lancer le mode plein écran sur la première interaction clavier
+                if (!this.scale.isFullscreen && direction.x !== 0 && direction.y !== 0) {
+                    this.scale.startFullscreen();
+                }
             } else if (cursors.down.isDown && lastDirection.y === 0) {
                 direction.set(0, 1);
                 lastDirection.copy(direction);
+                // Lancer le mode plein écran sur la première interaction clavier
+                if (!this.scale.isFullscreen && direction.x !== 0 && direction.y !== 0) {
+                    this.scale.startFullscreen();
+                }
             }
 
             // Gérer le mouvement du serpent à intervalles réguliers
