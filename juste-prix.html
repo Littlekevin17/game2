@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Le Juste Prix</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #e0f2fe; /* Light blue background */
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+    <main id="game-container" class="bg-white p-8 sm:p-12 rounded-3xl shadow-2xl text-center w-full max-w-md">
+        <h1 class="text-4xl font-extrabold text-blue-900 mb-6">Le Juste Prix</h1>
+        <p id="message" class="text-xl text-gray-700 mb-6">Devinez le nombre entre 1 et 100</p>
+        
+        <input 
+            type="number" 
+            id="guess-input" 
+            placeholder="Entrez votre nombre" 
+            class="w-full p-4 text-center text-xl border-2 border-blue-200 rounded-xl mb-4 focus:outline-none focus:border-blue-500 transition-colors" 
+            min="1" 
+            max="100"
+        >
+        
+        <div class="space-y-4">
+            <button id="guess-button" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-blue-700 transition-all transform hover:scale-105">
+                Deviner
+            </button>
+            <button id="restart-button" class="hidden w-full bg-green-500 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-green-600 transition-all transform hover:scale-105">
+                Rejouer
+            </button>
+        </div>
+        
+        <p id="attempts-counter" class="text-lg text-gray-500 mt-6">Tentatives : 0</p>
+        <!-- NOUVEAU: Affichage du chronomètre -->
+        <p id="timer" class="text-lg text-gray-500 mt-2">Temps écoulé : 00:00</p>
+
+        <!-- Message Box -->
+        <div id="message-box" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center hidden z-50">
+            <div class="bg-white p-8 rounded-2xl shadow-2xl text-center max-w-sm w-full relative transform scale-95 transition-transform duration-300">
+                <h3 id="message-box-title" class="text-3xl font-bold mb-4 text-blue-900"></h3>
+                <p id="message-box-text" class="text-xl text-gray-700 mb-6"></p>
+                <button id="message-box-button" class="bg-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:bg-blue-700 transition-colors">
+                    Fermer
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // Le code JavaScript pour la logique du jeu
+        document.addEventListener('DOMContentLoaded', () => {
+            const guessInput = document.getElementById('guess-input');
+            const guessButton = document.getElementById('guess-button');
+            const restartButton = document.getElementById('restart-button');
+            const message = document.getElementById('message');
+            const attemptsCounter = document.getElementById('attempts-counter');
+            const timerDisplay = document.getElementById('timer'); // NOUVEAU
+            const messageBox = document.getElementById('message-box');
+            const messageBoxTitle = document.getElementById('message-box-title');
+            const messageBoxText = document.getElementById('message-box-text');
+            const messageBoxButton = document.getElementById('message-box-button');
+
+            let secretNumber;
+            let attempts;
+            let timerId; // NOUVEAU
+            let startTime; // NOUVEAU
+            let isFirstGuess = true; // NOUVEAU
+
+            // Fonction pour formater le temps
+            function formatTime(seconds) {
+                const minutes = Math.floor(seconds / 60);
+                const remainingSeconds = seconds % 60;
+                const formattedMinutes = String(minutes).padStart(2, '0');
+                const formattedSeconds = String(remainingSeconds).padStart(2, '0');
+                return `${formattedMinutes}:${formattedSeconds}`;
+            }
+
+            // Fonction pour mettre à jour le chronomètre
+            function updateTimer() {
+                const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
+                timerDisplay.textContent = `Temps écoulé : ${formatTime(elapsedTime)}`;
+            }
+
+            // Fonction pour afficher une boîte de dialogue personnalisée
+            function showMessageBox(title, text, buttonText = "Fermer") {
+                messageBoxTitle.textContent = title;
+                messageBoxText.textContent = text;
+                messageBoxButton.textContent = buttonText;
+                messageBox.classList.remove('hidden');
+                messageBox.querySelector('.transform').classList.add('scale-100');
+            }
+
+            // Fonction pour masquer la boîte de dialogue
+            function hideMessageBox() {
+                messageBox.querySelector('.transform').classList.remove('scale-100');
+                setTimeout(() => {
+                    messageBox.classList.add('hidden');
+                }, 300);
+            }
+
+            // Fonction pour initialiser le jeu
+            function startGame() {
+                // Arrête le chronomètre s'il est en cours
+                clearInterval(timerId); // NOUVEAU
+                
+                secretNumber = Math.floor(Math.random() * 100) + 1;
+                attempts = 0;
+                isFirstGuess = true; // NOUVEAU
+                startTime = Date.now(); // NOUVEAU
+                timerDisplay.textContent = `Temps écoulé : 00:00`; // NOUVEAU
+
+                message.textContent = "Devinez le nombre entre 1 et 100";
+                guessInput.value = '';
+                attemptsCounter.textContent = `Tentatives : 0`;
+                guessInput.disabled = false;
+
+                guessButton.classList.remove('hidden');
+                restartButton.classList.add('hidden');
+
+                hideMessageBox();
+
+                console.log('Nouveau jeu démarré. Nombre secret :', secretNumber);
+            }
+
+            // Fonction pour vérifier la proposition du joueur
+            function checkGuess() {
+                const userGuess = parseInt(guessInput.value);
+
+                // Validation de l'entrée
+                if (isNaN(userGuess) || userGuess < 1 || userGuess > 100) {
+                    showMessageBox("Erreur", "Veuillez entrer un nombre valide entre 1 et 100.");
+                    return;
+                }
+
+                // NOUVEAU: Démarre le chronomètre au premier essai
+                if (isFirstGuess) {
+                    startTime = Date.now();
+                    timerId = setInterval(updateTimer, 1000);
+                    isFirstGuess = false;
+                }
+
+                attempts++;
+                attemptsCounter.textContent = `Tentatives : ${attempts}`;
+
+                if (userGuess === secretNumber) {
+                    // Arrête le chronomètre
+                    clearInterval(timerId); // NOUVEAU
+                    const finalTime = formatTime(Math.floor((Date.now() - startTime) / 1000)); // NOUVEAU
+
+                    message.textContent = `Bravo ! Vous avez trouvé le nombre en ${attempts} tentatives !`;
+                    guessInput.disabled = true;
+                    guessButton.classList.add('hidden');
+                    restartButton.classList.remove('hidden');
+                    
+                    showMessageBox("Félicitations !", `Vous avez trouvé le juste prix (${secretNumber}) en ${attempts} tentatives, en ${finalTime} !`); // NOUVEAU
+                } else if (userGuess > secretNumber) {
+                    message.textContent = "C'est moins !";
+                } else {
+                    message.textContent = "C'est plus !";
+                }
+            }
+
+            // Écouteur d'événement pour le bouton "Deviner"
+            guessButton.addEventListener('click', checkGuess);
+
+            // Écouteur d'événement pour le bouton "Rejouer"
+            restartButton.addEventListener('click', startGame);
+
+            // Écouteur d'événement pour la touche "Entrée" dans le champ de saisie
+            guessInput.addEventListener('keypress', (event) => {
+                if (event.key === 'Enter') {
+                    checkGuess();
+                }
+            });
+
+            // Écouteur d'événement pour le bouton de la boîte de dialogue
+            messageBoxButton.addEventListener('click', hideMessageBox);
+
+            // Démarre le jeu au chargement de la page
+            startGame();
+        });
+    </script>
+</body>
+</html>
