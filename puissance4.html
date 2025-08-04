@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Puissance 4</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Définition des variables CSS pour un thème de couleur cohérent */
+        :root {
+            --bg-color: #f0f4f8;
+            --primary-color: #4f46e5;
+            --secondary-color: #8b5cf6;
+            --player1-color: #ef4444; /* Rouge */
+            --player2-color: #facc15; /* Jaune */
+            --board-bg-color: #3b82f6;
+            --card-bg-color: #ffffff;
+            --text-color: #1f2937;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            flex-direction: column;
+        }
+
+        .game-container {
+            width: 100%;
+            max-width: 600px;
+            background-color: var(--card-bg-color);
+            border-radius: 20px;
+            box-shadow: 0 10px 25px var(--shadow-color);
+            padding: 30px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .status-container {
+            min-height: 30px;
+            margin: 20px 0;
+        }
+
+        #message {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            background-color: var(--board-bg-color);
+            border-radius: 10px;
+            box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.2);
+            touch-action: none;
+        }
+        
+        .controls {
+            margin-top: 25px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .controls-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        button, select {
+            background-color: var(--secondary-color);
+            color: var(--card-bg-color);
+            font-family: 'Inter', sans-serif;
+            font-weight: 700;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1rem;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(139, 92, 246, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button.active {
+            background-color: var(--primary-color);
+            box-shadow: 0 5px 15px rgba(79, 70, 229, 0.4);
+        }
+
+        button:hover, select:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 20px rgba(139, 92, 246, 0.5);
+        }
+
+        button:active, select:active {
+            transform: translateY(0);
+            box-shadow: 0 5px 15px rgba(139, 92, 246, 0.4);
+        }
+        
+        select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            text-align: center;
+        }
+
+        /* Styles pour les messages de statut spécifiques */
+        .player1-turn {
+            color: var(--player1-color);
+        }
+
+        .player2-turn {
+            color: var(--player2-color);
+        }
+
+        .win-message {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        /* Règle CSS pour les petits écrans afin de maximiser l'espace */
+        @media (max-width: 650px) {
+            body {
+                padding: 10px;
+            }
+            .game-container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    <div class="status-container">
+        <p id="message">C'est au tour du joueur 1 !</p>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+    <div class="controls">
+        <div class="controls-row">
+            <button id="modeTwoPlayersButton" class="active">2 Joueurs</button>
+            <button id="modeAIButton">Contre l'IA</button>
+        </div>
+        <div class="controls-row" id="difficultyControls" style="display: none;">
+            <label for="difficultySelect" style="font-weight: 700;">Difficulté :</label>
+            <select id="difficultySelect">
+                <option value="easy">Facile</option>
+                <option value="medium">Moyen</option>
+                <option value="hard">Difficile</option>
+            </select>
+        </div>
+        <button id="resetButton">Recommencer la partie</button>
+    </div>
+</div>
+
+<script>
+    // Variables de configuration du jeu
+    const rows = 6;
+    const cols = 7;
+    const padding = 10;
+    let cell_size;
+    let board;
+    let currentPlayer;
+    let game_over;
+    let gameMode = 'twoPlayers'; // 'twoPlayers' ou 'vsAI'
+    let aiDifficulty = 'easy'; // 'easy', 'medium', 'hard'
+    let isAITurn = false;
+
+    // Récupération des éléments du DOM
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const messageElement = document.getElementById('message');
+    const resetButton = document.getElementById('resetButton');
+    const modeTwoPlayersButton = document.getElementById('modeTwoPlayersButton');
+    const modeAIButton = document.getElementById('modeAIButton');
+    const difficultyControls = document.getElementById('difficultyControls');
+    const difficultySelect = document.getElementById('difficultySelect');
+
+    // Mettre en place le canevas et commencer le jeu
+    window.addEventListener('load', setup);
+    window.addEventListener('resize', setup);
+    canvas.addEventListener('click', handleUserClick);
+    resetButton.addEventListener('click', setup);
+    modeTwoPlayersButton.addEventListener('click', () => setGameMode('twoPlayers'));
+    modeAIButton.addEventListener('click', () => setGameMode('vsAI'));
+    difficultySelect.addEventListener('change', (e) => {
+        aiDifficulty = e.target.value;
+        setup();
+    });
+
+    // Empêche le défilement de l'écran sur les appareils tactiles lors du déplacement sur le canevas
+    canvas.addEventListener('touchmove', (event) => {
+        event.preventDefault();
+    }, { passive: false });
+
+    /**
+     * @description Définit le mode de jeu (2 joueurs ou contre l'IA) et réinitialise la partie.
+     * @param {string} mode Le mode de jeu à définir ('twoPlayers' ou 'vsAI').
+     */
+    function setGameMode(mode) {
+        gameMode = mode;
+        if (mode === 'vsAI') {
+            modeTwoPlayersButton.classList.remove('active');
+            modeAIButton.classList.add('active');
+            difficultyControls.style.display = 'flex';
+        } else {
+            modeTwoPlayersButton.classList.add('active');
+            modeAIButton.classList.remove('active');
+            difficultyControls.style.display = 'none';
+        }
+        setup();
+    }
+
+    /**
+     * @description Initialise ou réinitialise le jeu et le canevas.
+     * Cette fonction est appelée au chargement de la page et lors du redimensionnement.
+     */
+    function setup() {
+        // Redimensionner le canevas de manière dynamique en fonction de l'espace disponible
+        const container = canvas.parentElement;
+        const containerWidth = container.clientWidth;
+        const containerHeight = container.clientHeight;
+        
+        const availableHeight = containerHeight - 
+                                document.querySelector('.status-container').offsetHeight - 
+                                document.querySelector('.controls').offsetHeight - 
+                                40; // Marge supplémentaire pour le padding
+
+        const cell_size_by_width = Math.floor((containerWidth - (cols + 1) * padding) / cols);
+        const cell_size_by_height = Math.floor((availableHeight - (rows + 1) * padding) / rows);
+        cell_size = Math.min(cell_size_by_width, cell_size_by_height);
+        
+        if (cell_size <= 0) {
+            cell_size = 30;
+        }
+        
+        canvas.width = cols * cell_size + (cols + 1) * padding;
+        canvas.height = rows * cell_size + (rows + 1) * padding;
+        
+        // Initialiser l'état du jeu
+        board = createBoard();
+        currentPlayer = 1;
+        game_over = false;
+        isAITurn = false;
+        
+        messageElement.textContent = "C'est au tour du joueur 1 !";
+        messageElement.className = 'player1-turn';
+        drawBoard();
+    }
+
+    /**
+     * @description Crée un tableau 2D pour représenter le plateau de jeu.
+     * @returns {Array<Array<number>>} Le tableau de jeu rempli de zéros.
+     */
+    function createBoard() {
+        return Array.from({ length: rows }, () => Array(cols).fill(0));
+    }
+
+    /**
+     * @description Dessine le plateau de jeu et tous les jetons placés sur le canevas.
+     */
+    function drawBoard() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Dessiner le fond du plateau
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--board-bg-color');
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        for (let row = 0; row < rows; row++) {
+            for (let col = 0; col < cols; col++) {
+                drawCell(row, col);
+            }
+        }
+    }
+
+    /**
+     * @description Dessine une seule cellule (un trou) sur le plateau.
+     * @param {number} row La ligne de la cellule.
+     * @param {number} col La colonne de la cellule.
+     */
+    function drawCell(row, col) {
+        const x = col * (cell_size + padding) + padding + cell_size / 2;
+        const y = row * (cell_size + padding) + padding + cell_size / 2;
+        const radius = cell_size / 2;
+
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        
+        // Dessiner le jeton si la cellule est occupée
+        if (board[row][col] === 1) {
+            drawPiece(x, y, radius, getComputedStyle(document.documentElement).getPropertyValue('--player1-color'));
+        } else if (board[row][col] === 2) {
+            drawPiece(x, y, radius, getComputedStyle(document.documentElement).getPropertyValue('--player2-color'));
+        } else {
+            // Dessiner un trou vide
+            ctx.fillStyle = 'white';
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
+            ctx.shadowBlur = 5;
+            ctx.shadowOffsetY = 3;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetY = 0;
+        }
+        ctx.closePath();
+    }
+
+    /**
+     * @description Dessine un jeton avec un effet 3D.
+     * @param {number} x La position en X du jeton.
+     * @param {number} y La position en Y du jeton.
+     * @param {number} radius Le rayon du jeton.
+     * @param {string} color La couleur du jeton.
+     */
+    function drawPiece(x, y, radius, color) {
+        // Effet de gradient pour un aspect 3D
+        const gradient = ctx.createRadialGradient(x + radius * 0.3, y - radius * 0.3, radius * 0.1, x, y, radius);
+        gradient.addColorStop(0, 'white');
+        gradient.addColorStop(0.5, color);
+        gradient.addColorStop(1, '#666');
+        
+        ctx.fillStyle = gradient;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetY = 4;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetY = 0;
+    }
+
+    /**
+     * @description Gère le clic de l'utilisateur sur le canevas.
+     * @param {MouseEvent} event L'objet événement de la souris.
+     */
+    function handleUserClick(event) {
+        if (game_over || (gameMode === 'vsAI' && isAITurn)) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = event.clientX - rect.left;
+        
+        // Déterminer la colonne cliquée
+        const col = Math.floor(mouseX / (cell_size + padding));
+        
+        if (col >= 0 && col < cols) {
+            if (dropPiece(col)) { // Si la pièce a été placée avec succès
+                if (gameMode === 'vsAI' && !game_over) {
+                    isAITurn = true;
+                    switchPlayer(); // Change le joueur en 2 (l'IA)
+                    messageElement.textContent = `L'IA réfléchit...`;
+                    messageElement.className = 'player2-turn';
+                    setTimeout(makeAIMove, 1000); // L'IA joue après un petit délai
+                }
+            }
+        }
+    }
+
+    /**
+     * @description Place un jeton dans une colonne spécifiée.
+     * @param {number} col La colonne où placer le jeton.
+     * @returns {boolean} Vrai si le jeton a été placé, faux si la colonne est pleine.
+     */
+    function dropPiece(col) {
+        for (let row = rows - 1; row >= 0; row--) {
+            if (board[row][col] === 0) {
+                board[row][col] = currentPlayer;
+                drawBoard();
+
+                if (checkWin(row, col)) {
+                    messageElement.textContent = `Le joueur ${currentPlayer} a gagné !`;
+                    messageElement.className = `player${currentPlayer}-turn win-message`;
+                    game_over = true;
+                } else if (checkDraw()) {
+                    messageElement.textContent = "Match nul !";
+                    messageElement.className = '';
+                    game_over = true;
+                } else {
+                    if (gameMode === 'twoPlayers') {
+                        switchPlayer();
+                    }
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    /**
+     * @description L'IA joue son tour en fonction de la difficulté sélectionnée.
+     */
+    function makeAIMove() {
+        if (game_over) return;
+        
+        let bestCol;
+        switch (aiDifficulty) {
+            case 'easy':
+                bestCol = chooseRandomMove();
+                break;
+            case 'medium':
+                bestCol = chooseMediumMove();
+                break;
+            case 'hard':
+                bestCol = chooseHardMove();
+                break;
+        }
+
+        if (bestCol !== null) {
+            dropPiece(bestCol);
+        }
+        
+        if (!game_over) {
+            isAITurn = false;
+            switchPlayer(); // Passe le tour au joueur 1 (humain)
+        }
+    }
+    
+    /**
+     * @description L'IA choisit une colonne aléatoire.
+     * @returns {number | null} La colonne choisie ou null si aucune colonne n'est disponible.
+     */
+    function chooseRandomMove() {
+        const validCols = [];
+        for (let c = 0; c < cols; c++) {
+            if (board[0][c] === 0) {
+                validCols.push(c);
+            }
+        }
+        if (validCols.length > 0) {
+            const randomIndex = Math.floor(Math.random() * validCols.length);
+            return validCols[randomIndex];
+        }
+        return null;
+    }
+
+    /**
+     * @description L'IA choisit un coup en mode "moyen".
+     * @returns {number | null} La colonne choisie ou null si aucune colonne n'est disponible.
+     */
+    function chooseMediumMove() {
+        // 1. Vérifier si l'IA peut gagner
+        let winningMove = findWinningMove(2);
+        if (winningMove !== null) return winningMove;
+        
+        // 2. Vérifier si le joueur peut gagner et le bloquer
+        let blockingMove = findWinningMove(1);
+        if (blockingMove !== null) return blockingMove;
+        
+        // 3. Sinon, jouer aléatoirement
+        return chooseRandomMove();
+    }
+    
+    /**
+     * @description L'IA choisit un coup en mode "difficile".
+     * @returns {number | null} La colonne choisie ou null si aucune colonne n'est disponible.
+     */
+    function chooseHardMove() {
+        let bestScore = -Infinity;
+        let bestMove = null;
+        const validCols = [];
+        for (let c = 0; c < cols; c++) {
+            if (board[0][c] === 0) {
+                validCols.push(c);
+            }
+        }
+
+        // Si aucune colonne n'est disponible, il n'y a pas de coup possible
+        if (validCols.length === 0) return null;
+
+        for (let col of validCols) {
+            // Simuler le coup
+            const tempBoard = JSON.parse(JSON.stringify(board));
+            let row;
+            for (let r = rows - 1; r >= 0; r--) {
+                if (tempBoard[r][col] === 0) {
+                    tempBoard[r][col] = 2;
+                    row = r;
+                    break;
+                }
+            }
+            
+            const score = evaluateBoard(tempBoard, row, col);
+            if (score > bestScore) {
+                bestScore = score;
+                bestMove = col;
+            }
+        }
+        return bestMove;
+    }
+
+    /**
+     * @description Évalue le plateau de jeu pour l'IA (difficile).
+     * @param {Array<Array<number>>} board Le tableau de jeu.
+     * @param {number} lastRow La dernière ligne jouée.
+     * @param {number} lastCol La dernière colonne jouée.
+     * @returns {number} Un score d'évaluation.
+     */
+    function evaluateBoard(board, lastRow, lastCol) {
+        // Le score est basé sur le nombre de jetons consécutifs
+        let score = 0;
+        const winningScore = 10000;
+        const blockingScore = 1000;
+        const threateningScore = 50;
+
+        // Vérifier si l'IA gagne avec ce coup
+        if (checkWinOnTempBoard(board, lastRow, lastCol, 2)) {
+            return winningScore;
+        }
+
+        // Vérifier si l'adversaire gagne et bloquer
+        let opponentWin = findWinningMove(1);
+        if (opponentWin !== null) {
+            score += blockingScore;
+        }
+
+        // Vérifier les menaces de 3-en-ligne et les opportunités pour l'IA
+        score += countThreats(board, 2) * threateningScore; // Créer une ligne de 3
+        score -= countThreats(board, 1) * (threateningScore / 2); // Bloquer une ligne de 3 du joueur
+
+        // Favoriser le centre du plateau
+        score += (Math.abs(lastCol - 3)) * -2;
+        
+        return score;
+    }
+    
+    /**
+     * @description Compte les menaces (lignes de 3 jetons non bloquées) pour un joueur donné.
+     * @param {Array<Array<number>>} board Le tableau de jeu.
+     * @param {number} player Le joueur à vérifier (1 ou 2).
+     * @returns {number} Le nombre de menaces.
+     */
+    function countThreats(board, player) {
+        let count = 0;
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                if (board[r][c] === player) {
+                    // Horizontal
+                    if (c + 2 < cols && board[r][c+1] === player && board[r][c+2] === player && (c - 1 < 0 || board[r][c-1] === 0) && (c + 3 >= cols || board[r][c+3] === 0)) {
+                        count++;
+                    }
+                    // Vertical
+                    if (r + 2 < rows && board[r+1][c] === player && board[r+2][c] === player && (r - 1 < 0 || board[r-1][c] === 0)) {
+                        count++;
+                    }
+                    // Diagonal /
+                    if (r + 2 < rows && c + 2 < cols && board[r+1][c+1] === player && board[r+2][c+2] === player && (r - 1 < 0 || c - 1 < 0 || board[r-1][c-1] === 0)) {
+                        count++;
+                    }
+                    // Diagonal \
+                    if (r + 2 < rows && c - 2 >= 0 && board[r+1][c-1] === player && board[r+2][c-2] === player && (r - 1 < 0 || c + 1 >= cols || board[r-1][c+1] === 0)) {
+                        count++;
+                    }
+                }
+            }
+        }
+        return count;
+    }
+
+    /**
+     * @description Trouve un coup gagnant pour un joueur donné.
+     * @param {number} player Le joueur à vérifier (1 ou 2).
+     * @returns {number | null} La colonne gagnante ou null si aucune n'est trouvée.
+     */
+    function findWinningMove(player) {
+        for (let c = 0; c < cols; c++) {
+            for (let r = rows - 1; r >= 0; r--) {
+                if (board[r][c] === 0) {
+                    board[r][c] = player;
+                    if (checkWin(r, c)) {
+                        board[r][c] = 0; // Annuler le coup simulé
+                        return c;
+                    }
+                    board[r][c] = 0; // Annuler le coup simulé
+                    break;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * @description Vérifie si la partie est un match nul (le plateau est plein).
+     * @returns {boolean} Vrai si le jeu est un match nul, sinon Faux.
+     */
+    function checkDraw() {
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                if (board[r][c] === 0) {
+                    return false; // Il y a encore des cellules vides
+                }
+            }
+        }
+        return true; // Le plateau est plein
+    }
+
+    /**
+     * @description Bascule entre les joueurs 1 et 2.
+     */
+    function switchPlayer() {
+        currentPlayer = currentPlayer === 1 ? 2 : 1;
+        messageElement.textContent = `C'est au tour du joueur ${currentPlayer} !`;
+        messageElement.className = `player${currentPlayer}-turn`;
+    }
+
+    /**
+     * @description Vérifie si le joueur actuel a gagné à partir de la dernière pièce placée.
+     * @param {number} row La ligne de la dernière pièce.
+     * @param {number} col La colonne de la dernière pièce.
+     * @returns {boolean} Vrai si le joueur a gagné, sinon Faux.
+     */
+    function checkWin(row, col) {
+        return checkWinOnTempBoard(board, row, col, currentPlayer);
+    }
+
+    /**
+     * @description Vérifie si le joueur a gagné sur un plateau donné.
+     * @param {Array<Array<number>>} boardToTest Le tableau de jeu à vérifier.
+     * @param {number} row La ligne de la dernière pièce.
+     * @param {number} col La colonne de la dernière pièce.
+     * @param {number} player Le joueur à vérifier.
+     * @returns {boolean} Vrai si le joueur a gagné, sinon Faux.
+     */
+    function checkWinOnTempBoard(boardToTest, row, col, player) {
+        // Directions à vérifier : horizontal, vertical, diagonal / et \
+        const directions = [
+            [0, 1],   // Horizontal
+            [1, 0],   // Vertical
+            [1, 1],   // Diagonal
+            [1, -1]   // Anti-diagonal
+        ];
+
+        for (const [dr, dc] of directions) {
+            let count = 1;
+            // Vérifier dans une direction
+            count += countLineOnTempBoard(boardToTest, row, col, dr, dc, player);
+            // Vérifier dans la direction opposée
+            count += countLineOnTempBoard(boardToTest, row, col, -dr, -dc, player);
+
+            if (count >= 4) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @description Compte le nombre de jetons consécutifs dans une direction donnée sur un plateau temporaire.
+     * @param {Array<Array<number>>} boardToTest Le tableau de jeu à vérifier.
+     * @param {number} startRow La ligne de départ.
+     * @param {number} startCol La colonne de départ.
+     * @param {number} dr Le changement de ligne (par exemple, 1 pour aller vers le bas).
+     * @param {number} dc Le changement de colonne (par exemple, 1 pour aller vers la droite).
+     * @param {number} player Le joueur à vérifier.
+     * @returns {number} Le nombre de jetons consécutifs.
+     */
+    function countLineOnTempBoard(boardToTest, startRow, startCol, dr, dc, player) {
+        let count = 0;
+        let r = startRow + dr;
+        let c = startCol + dc;
+
+        while (r >= 0 && r < rows && c >= 0 && c < cols && boardToTest[r][c] === player) {
+            count++;
+            r += dr;
+            c += dc;
+        }
+        return count;
+    }
+</script>
+
+</body>
+</html>
