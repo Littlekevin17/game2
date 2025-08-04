@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Le Livre dont vous êtes le Héros</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* La propriété box-sizing: border-box; est essentielle pour garantir que le padding et la bordure ne s'ajoutent pas à la largeur totale de l'élément, évitant ainsi le défilement horizontal. */
+        * {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #34495e;
+            --text-color: #ecf0f1;
+            --button-color: #3498db;
+            --button-hover-color: #2980b9;
+            --font-family: 'Inter', sans-serif;
+            --border-radius: 8px;
+            --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--primary-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            line-height: 1.6;
+            /* La propriété overflow-x: hidden; empêche explicitement le défilement horizontal. */
+            overflow-x: hidden; 
+            text-align: center;
+        }
+        
+        .game-container {
+            max-width: 800px;
+            width: 100%;
+            background-color: var(--secondary-color);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 20px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .story-text {
+            min-height: 200px;
+            margin-bottom: 20px;
+            padding: 10px;
+        }
+
+        .choices {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .choices button {
+            background-color: var(--button-color);
+            color: white;
+            border: none;
+            padding: 15px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: var(--border-radius);
+            transition: background-color 0.3s ease;
+            width: 100%;
+            box-shadow: var(--box-shadow);
+            font-weight: bold;
+        }
+
+        .choices button:hover {
+            background-color: var(--button-hover-color);
+        }
+
+        /* Styles pour les petits écrans, y compris les mobiles en mode portrait et paysage */
+        @media (max-width: 600px) {
+            body {
+                /* Réduit le padding du corps pour laisser plus de place au contenu */
+                padding: 10px;
+            }
+            .game-container {
+                /* Réduit le padding du conteneur du jeu */
+                padding: 15px;
+            }
+            .choices button {
+                font-size: 14px;
+                padding: 12px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div id="story-text" class="story-text">
+            <!-- Le texte de l'histoire s'affichera ici -->
+        </div>
+        <div id="choices" class="choices">
+            <!-- Les boutons de choix s'afficheront ici -->
+        </div>
+    </div>
+
+    <script>
+        // L'objet `story` contient toute l'histoire du jeu.
+        // Chaque clé est un identifiant de page, et la valeur est un objet avec le texte de l'histoire et les choix.
+        const story = {
+            'start': {
+                text: "Vous vous réveillez dans une forêt sombre, la tête lourde et sans aucun souvenir de la manière dont vous êtes arrivé ici. Le vent murmure dans les feuilles. Deux chemins s'offrent à vous : l'un est une sente étroite qui serpente entre des arbres denses, l'autre est une route plus large qui mène vers une lueur lointaine. Que faites-vous ?",
+                choices: [
+                    { text: "Emprunter la sente étroite.", destination: 'page_2' },
+                    { text: "Suivre la route large vers la lueur.", destination: 'page_3' }
+                ]
+            },
+            'page_2': {
+                text: "La sente vous mène dans une zone encore plus dense de la forêt. Le silence est écrasant, et vous sentez des regards sur vous. Soudain, un loup sort des buissons devant vous et grogne. Vous apercevez une petite grotte sur votre gauche et un vieil arbre à droite. Que faites-vous ?",
+                choices: [
+                    { text: "Tenter de fuir le loup.", destination: 'page_4' },
+                    { text: "Vous cacher dans la grotte.", destination: 'page_5' },
+                    { text: "Grimper dans le vieil arbre.", destination: 'page_6' }
+                ]
+            },
+            'page_3': {
+                text: "La route large vous conduit à un village accueillant. Les habitants sont en train de festoyer. Un vieil homme s'approche de vous et vous propose un verre de bienvenue. Il semble inoffensif, mais vous ne lui faites pas entièrement confiance. Que faites-vous ?",
+                choices: [
+                    { text: "Accepter le verre.", destination: 'page_7' },
+                    { text: "Refuser poliment et continuer votre chemin.", destination: 'page_8' },
+                    { text: "Demander au vieil homme ce qu'il se passe.", destination: 'page_9' }
+                ]
+            },
+            'page_4': {
+                text: "Vous tentez de vous enfuir, mais le loup est plus rapide. Il vous rattrape et vous mord violemment. Vous perdez connaissance. C'est la fin de l'aventure.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_5': {
+                text: "Vous vous réfugiez dans la grotte et trouvez un vieux coffre. Il est verrouillé, mais vous pouvez tenter de le forcer ou chercher une clé. Un bruit de pas se fait entendre à l'entrée de la grotte... Que faites-vous ?",
+                choices: [
+                    { text: "Forcer le coffre.", destination: 'page_10' },
+                    { text: "Attendre que les bruits s'éloignent.", destination: 'page_11' },
+                    { text: "Faire du bruit pour attirer l'attention.", destination: 'page_12' }
+                ]
+            },
+            'page_6': {
+                text: "Vous grimpez dans l'arbre. Le loup passe en dessous sans vous voir. Depuis votre perchoir, vous apercevez un chemin menant à une rivière scintillante au loin. Que faites-vous ?",
+                choices: [
+                    { text: "Descendre et suivre le chemin vers la rivière.", destination: 'page_13' },
+                    { text: "Continuer à vous déplacer d'arbre en arbre.", destination: 'page_14' }
+                ]
+            },
+            'page_7': {
+                text: "Vous acceptez le verre, qui se révèle être une délicieuse potion. Les habitants vous accueillent chaleureusement, vous offrent un repas et vous donnent une carte détaillée de la région. Vous avez gagné la confiance du village. Vous êtes sauvé !",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_8': {
+                text: "Vous refusez le verre et continuez votre route. Après des heures de marche, vous tombez sur une rivière impossible à traverser. La nuit tombe et vous êtes seul. C'est la fin de l'aventure.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_9': {
+                text: "Le vieil homme vous sourit. 'Nous célébrons la récolte du soleil,' dit-il. 'Joignez-vous à nous !' Il vous offre une potion. L'ambiance est conviviale, mais vous remarquez un symbole étrange sur son pendentif. Que faites-vous ?",
+                choices: [
+                    { text: "Accepter la potion.", destination: 'page_15' },
+                    { text: "Demander ce que signifie le symbole.", destination: 'page_16' },
+                    { text: "Vous excuser et partir.", destination: 'page_17' }
+                ]
+            },
+            'page_10': {
+                text: "En forçant le coffre, vous découvrez une épée ancienne et une bourse pleine de pièces d'or. La personne qui s'approchait n'était qu'un chasseur. Vous le saluez et partez en direction d'un chemin qui mène à un temple abandonné. Vous êtes riche et armé.",
+                choices: [
+                    { text: "Aller au temple.", destination: 'page_18' },
+                    { text: "Retourner au village.", destination: 'page_19' }
+                ]
+            },
+            'page_11': {
+                text: "Vous attendez que les bruits s'éloignent, mais ils ne partent jamais. Vous êtes coincé. C'est la fin de l'aventure.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_12': {
+                text: "Le bruit attire l'attention d'un ours qui entre dans la grotte. Vous n'avez pas d'échappatoire. C'est la fin de l'aventure.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_13': {
+                text: "En suivant le chemin, vous arrivez à une magnifique rivière. Le soleil brille sur l'eau et vous apercevez un petit bateau amarré près de la berge. Que faites-vous ?",
+                choices: [
+                    { text: "Prendre le bateau et naviguer.", destination: 'page_20' },
+                    { text: "Traverser la rivière à la nage.", destination: 'page_21' },
+                    { text: "Continuer à pied en longeant la rive.", destination: 'page_22' }
+                ]
+            },
+            'page_14': {
+                text: "Sautant de branche en branche, vous vous perdez dans l'immensité de la forêt. Vous mourez de faim. C'est la fin de l'aventure.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_15': {
+                text: "La potion se révèle être un poison. Vous êtes trahi. C'est la fin de l'aventure.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_16': {
+                text: "Le vieil homme devient soudainement froid et silencieux. Il vous demande de quitter le village. Vous réalisez que vous êtes tombé sur un culte secret. Vous fuyez le village et trouvez un vieux chemin qui mène vers les montagnes.",
+                choices: [
+                    { text: "Suivre le chemin des montagnes.", destination: 'page_23' },
+                    { text: "Tenter de vous cacher et d'observer le culte.", destination: 'page_24' }
+                ]
+            },
+            'page_17': {
+                text: "Le vieil homme hoche la tête, déçu. Vous quittez le village et tombez sur une rivière impossible à traverser. C'est la fin de l'aventure.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_18': {
+                text: "Le chemin vous mène à un ancien temple en ruine. L'entrée est bloquée par un éboulement. Vous utilisez l'épée pour dégager les rochers et trouvez l'entrée d'un passage secret. Que faites-vous ?",
+                choices: [
+                    { text: "Entrer dans le passage secret.", destination: 'page_25' },
+                    { text: "Faire demi-tour et explorer les ruines.", destination: 'page_26' },
+                    { text: "Ne pas y toucher et vous en aller.", destination: 'page_27' }
+                ]
+            },
+            'page_19': {
+                text: "Vous revenez au village, riche et armé. Les habitants sont étonnés et vous fêtent en héros. Vous décidez d'utiliser votre argent pour reconstruire les ruines du village et vous installez ici. C'est une bonne fin pour vous. Vous êtes un héros.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_20': {
+                text: "Vous naviguez sur la rivière, et après des heures, vous arrivez à une cascade. Vous voyez un chemin derrière la cascade. Que faites-vous ?",
+                choices: [
+                    { text: "Pénétrer derrière la cascade.", destination: 'page_28' },
+                    { text: "Continuer à naviguer.", destination: 'page_29' }
+                ]
+            },
+            'page_21': {
+                text: "L'eau est glaciale et le courant est trop fort. Vous êtes emporté. C'est la fin de l'aventure.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_22': {
+                text: "En longeant la rivière, vous arrivez à une cascade. Le bruit est assourdissant. Vous apercevez un chemin derrière la cascade. Que faites-vous ?",
+                choices: [
+                    { text: "Pénétrer derrière la cascade.", destination: 'page_28' },
+                    { text: "Continuer votre chemin en montant la colline.", destination: 'page_30' }
+                ]
+            },
+            'page_23': {
+                text: "Le chemin des montagnes est escarpé, mais après une longue marche, vous arrivez à un monastère isolé. Les moines vous accueillent. Vous y trouvez la paix et apprenez l'histoire de la région. Vous êtes sain et sauf.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_24': {
+                text: "Vous vous cachez et observez. Vous voyez les villageois vénérer un monstre marin. Vous ne pouvez rien faire et vous vous faites capturer. C'est la fin de l'aventure.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_25': {
+                text: "Vous entrez dans le passage secret. Le chemin est sombre et humide. Vous arrivez dans une grande salle. Au centre, se trouve une statue. La pièce est remplie d'artefacts et d'or. Vous êtes riche !",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_26': {
+                text: "En explorant les ruines, vous tombez dans une trappe qui vous mène à une fosse remplie de pointes. C'est la fin de l'aventure.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_27': {
+                text: "Vous décidez de vous en aller, l'épée en main, et de trouver votre propre chemin. Vous partez vers l'inconnu. Vous n'avez pas de fin, votre histoire ne fait que commencer.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_28': {
+                text: "Derrière la cascade se trouve un autel. Vous y voyez une tablette en pierre avec des écritures anciennes. Que faites-vous ?",
+                choices: [
+                    { text: "Tenter de déchiffrer les écritures.", destination: 'page_31' },
+                    { text: "Frotter la tablette pour la nettoyer.", destination: 'page_32' },
+                    { text: "Laisser la tablette et repartir.", destination: 'page_33' }
+                ]
+            },
+            'page_29': {
+                text: "Le courant s'accélère et vous êtes emporté. C'est la fin de l'aventure.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_30': {
+                text: "En montant la colline, vous tombez sur un ravin. La nuit tombe et vous ne voyez pas où vous mettez les pieds. C'est la fin de l'aventure.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_31': {
+                text: "Vous comprenez les écritures : la tablette est un avertissement. Elle parle d'un ancien mal qui réside dans les montagnes. Vous devez retourner au village et prévenir tout le monde. C'est la fin de l'aventure. Vous êtes un héros.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_32': {
+                text: "En frottant la tablette, vous déclenchez un piège. Une lance jaillit du mur et vous transperce. C'est la fin de l'aventure.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_33': {
+                text: "Vous laissez la tablette et revenez à la rivière. Vous décidez de vous en aller, de trouver votre propre chemin. C'est la fin de votre aventure.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_34': {
+                text: "Le sentier est difficile, mais après une longue marche, vous arrivez à une clairière. Le soleil est au zénith. Vous apercevez une cabane sur votre gauche, un pont de pierre sur votre droite et un vieil ermite au milieu de la clairière. Que faites-vous ?",
+                choices: [
+                    { text: "Aller à la cabane.", destination: 'page_35' },
+                    { text: "Traverser le pont de pierre.", destination: 'page_36' },
+                    { text: "Parler à l'ermite.", destination: 'page_37' }
+                ]
+            },
+            'page_35': {
+                text: "La cabane est abandonnée, mais vous trouvez un sac de provisions. Vous pouvez manger, boire et vous reposer. Vous récupérez des forces. Que faites-vous ?",
+                choices: [
+                    { text: "Continuer votre chemin vers le pont de pierre.", destination: 'page_36' },
+                    { text: "Continuer votre chemin vers l'ermite.", destination: 'page_37' }
+                ]
+            },
+            'page_36': {
+                text: "Le pont de pierre est en mauvais état. Vous sentez qu'il peut s'écrouler à tout moment. Que faites-vous ?",
+                choices: [
+                    { text: "Traverser le pont.", destination: 'page_38' },
+                    { text: "Rebrousser chemin et aller parler à l'ermite.", destination: 'page_37' }
+                ]
+            },
+            'page_37': {
+                text: "L'ermite est un vieil homme sage. Il vous propose de répondre à trois questions. Acceptez-vous ?",
+                choices: [
+                    { text: "Accepter.", destination: 'page_39' },
+                    { text: "Refuser et partir.", destination: 'page_40' }
+                ]
+            },
+            'page_38': {
+                text: "Le pont s'écroule sous vos pieds. Vous tombez dans le ravin. C'est la fin de l'aventure.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_39': {
+                text: "L'ermite vous pose la première question : 'Quel est le son d'une seule main qui applaudit ?'.",
+                choices: [
+                    { text: "Je ne sais pas.", destination: 'page_41' },
+                    { text: "Le silence.", destination: 'page_42' },
+                    { text: "Le bruit du vent.", destination: 'page_41' }
+                ]
+            },
+            'page_40': {
+                text: "Vous partez, mais vous ne voyez plus le chemin. Vous vous perdez. C'est la fin de l'aventure.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_41': {
+                text: "L'ermite soupire. 'Vous n'êtes pas prêt.' Vous vous réveillez, et tout n'était qu'un rêve. C'est la fin de l'aventure.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_42': {
+                text: "L'ermite vous sourit. 'Bonne réponse !' Il vous pose la deuxième question : 'Qu'est-ce qui est plus grand que Dieu, plus mauvais que le diable, et si on en mange, on meurt ?'.",
+                choices: [
+                    { text: "L'amour.", destination: 'page_41' },
+                    { text: "Le néant.", destination: 'page_43' },
+                    { text: "Le péché.", destination: 'page_41' }
+                ]
+            },
+            'page_43': {
+                text: "L'ermite vous sourit. 'Bonne réponse !' Il vous pose la troisième et dernière question : 'Qu'est-ce qui est toujours devant nous, mais que nous ne pouvons jamais voir ?'.",
+                choices: [
+                    { text: "Le futur.", destination: 'page_44' },
+                    { text: "Le passé.", destination: 'page_41' },
+                    { text: "Le présent.", destination: 'page_41' }
+                ]
+            },
+            'page_44': {
+                text: "L'ermite vous sourit. 'Bonne réponse !' Il vous donne une carte magique. Vous trouvez votre chemin et votre but. Vous êtes un héros. C'est la fin de l'aventure.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_45': {
+                text: "Vous arrivez à une plage de sable fin. Une bouteille flotte sur l'eau. Que faites-vous ?",
+                choices: [
+                    { text: "Ouvrir la bouteille.", destination: 'page_46' },
+                    { text: "Laisser la bouteille et continuer votre chemin.", destination: 'page_47' }
+                ]
+            },
+            'page_46': {
+                text: "Vous ouvrez la bouteille et trouvez un message. 'Celui qui lit ceci est maudit. Le trésor est gardé par un monstre.' Vous vous retrouvez face à un monstre marin. C'est la fin de l'aventure.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_47': {
+                text: "Vous décidez de vous en aller. Vous trouvez une petite barque et vous naviguez vers l'horizon. C'est la fin de votre aventure.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_48': {
+                text: "Le chemin vous mène à une mine abandonnée. Vous y entrez. La lumière est faible et le chemin est étroit. Vous entendez des bruits bizarres. Que faites-vous ?",
+                choices: [
+                    { text: "Continuer d'avancer.", destination: 'page_49' },
+                    { text: "Rebrousser chemin.", destination: 'page_50' },
+                    { text: "Essayer de faire du bruit pour voir ce qui se passe.", destination: 'page_51' }
+                ]
+            },
+            'page_49': {
+                text: "En avançant, vous tombez sur un ravin. Vous n'avez pas d'échappatoire. C'est la fin de l'aventure.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_50': {
+                text: "Vous rebroussez chemin et arrivez à l'entrée de la mine. Vous apercevez un autre chemin sur votre droite qui mène à une rivière. Que faites-vous ?",
+                choices: [
+                    { text: "Prendre le chemin vers la rivière.", destination: 'page_13' },
+                    { text: "Continuer votre chemin vers la forêt.", destination: 'page_2' }
+                ]
+            },
+            'page_51': {
+                text: "En faisant du bruit, vous déclenchez une alarme qui vous mène à un piège. Une lance jaillit du mur et vous transperce. C'est la fin de l'aventure.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_52': {
+                text: "Vous arrivez à une grande cascade. Vous apercevez un chemin derrière la cascade. Que faites-vous ?",
+                choices: [
+                    { text: "Pénétrer derrière la cascade.", destination: 'page_28' },
+                    { text: "Continuer votre chemin en montant la colline.", destination: 'page_30' }
+                ]
+            },
+            'page_53': {
+                text: "Vous entrez dans la grotte et trouvez un trésor. Vous êtes riche. C'est la fin de votre aventure.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_54': {
+                text: "Vous vous rendez compte que la forêt est un labyrinthe. Vous vous perdez. C'est la fin de l'aventure.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_55': {
+                text: "Vous arrivez à un pont suspendu au-dessus d'un ravin. Il a l'air instable. Que faites-vous ?",
+                choices: [
+                    { text: "Traverser le pont.", destination: 'page_56' },
+                    { text: "Rebrousser chemin.", destination: 'page_57' }
+                ]
+            },
+            'page_56': {
+                text: "Le pont s'écroule sous vos pieds. Vous tombez dans le ravin. C'est la fin de l'aventure.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_57': {
+                text: "Vous décidez de rebrousser chemin. Vous apercevez un chemin qui mène à un temple abandonné. Que faites-vous ?",
+                choices: [
+                    { text: "Aller au temple.", destination: 'page_18' },
+                    { text: "Continuer votre chemin vers la forêt.", destination: 'page_2' }
+                ]
+            },
+            'page_58': {
+                text: "Vous arrivez à une intersection. Un chemin mène à une ville, un autre à une mine. Que faites-vous ?",
+                choices: [
+                    { text: "Aller à la ville.", destination: 'page_3' },
+                    { text: "Aller à la mine.", destination: 'page_48' }
+                ]
+            },
+            'page_59': {
+                text: "Vous trouvez une boussole magique qui vous indique le chemin vers un trésor. Que faites-vous ?",
+                choices: [
+                    { text: "Suivre la boussole.", destination: 'page_60' },
+                    { text: "Ignorer la boussole et continuer.", destination: 'page_61' }
+                ]
+            },
+            'page_60': {
+                text: "La boussole vous mène à une plage de sable fin. Vous apercevez une bouteille sur l'eau. Que faites-vous ?",
+                choices: [
+                    { text: "Ouvrir la bouteille.", destination: 'page_46' },
+                    { text: "Laisser la bouteille et continuer votre chemin.", destination: 'page_47' }
+                ]
+            },
+            'page_61': {
+                text: "Vous ignorez la boussole et continuez votre chemin. Vous vous perdez. C'est la fin de l'aventure.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_62': {
+                text: "Vous trouvez un livre ancien. En l'ouvrant, vous lisez la première page. 'Celui qui lit ceci est maudit. Le trésor est gardé par un monstre.' Vous vous retrouvez face à un monstre marin. C'est la fin de l'aventure.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_63': {
+                text: "Vous arrivez à une maison hantée. Vous entendez des bruits bizarres. Que faites-vous ?",
+                choices: [
+                    { text: "Entrer dans la maison.", destination: 'page_64' },
+                    { text: "Rebrousser chemin.", destination: 'page_65' }
+                ]
+            },
+            'page_64': {
+                text: "En entrant dans la maison, vous vous rendez compte que ce n'était qu'un piège. Vous êtes capturé. C'est la fin de l'aventure.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_65': {
+                text: "Vous rebroussez chemin. Vous trouvez une petite barque et vous naviguez vers l'horizon. C'est la fin de votre aventure.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_66': {
+                text: "Vous arrivez à un lac. Un bateau est amarré sur la rive. Que faites-vous ?",
+                choices: [
+                    { text: "Prendre le bateau et naviguer.", destination: 'page_67' },
+                    { text: "Traverser le lac à la nage.", destination: 'page_68' }
+                ]
+            },
+            'page_67': {
+                text: "Vous naviguez sur le lac, et après des heures, vous arrivez à une île. Vous y trouvez un trésor. C'est la fin de l'aventure.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_68': {
+                text: "L'eau est glaciale et le courant est trop fort. Vous êtes emporté. C'est la fin de l'aventure.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_69': {
+                text: "Vous arrivez à un pont. Le pont est en bois et semble instable. Vous entendez un bruit de pas derrière vous. Que faites-vous ?",
+                choices: [
+                    { text: "Traverser le pont.", destination: 'page_70' },
+                    { text: "Vous cacher sous le pont.", destination: 'page_71' }
+                ]
+            },
+            'page_70': {
+                text: "Le pont s'écroule sous vos pieds. Vous tombez dans le ravin. C'est la fin de l'aventure.",
+                choices: [
+                    { text: "Recommencer l'histoire.", destination: 'start' }
+                ]
+            },
+            'page_71': {
+                text: "Vous vous cachez sous le pont et vous voyez un vieil homme passer. Il ne vous voit pas. Vous continuez votre chemin. Vous arrivez à une grande cascade. Que faites-vous ?",
+                choices: [
+                    { text: "Pénétrer derrière la cascade.", destination: 'page_28' },
+                    { text: "Continuer votre chemin en montant la colline.", destination: 'page_30' }
+                ]
+            },
+            'page_72': {
+                text: "Vous arrivez à une grande cascade. Vous apercevez un chemin derrière la cascade. Que faites-vous ?",
+                choices: [
+                    { text: "Pénétrer derrière la cascade.", destination: 'page_28' },
+                    { text: "Continuer votre chemin en montant la colline.", destination: 'page_30' }
+                ]
+            },
+            'page_73': {
+                text: "Le chemin vous mène à une mine abandonnée. Vous y entrez. La lumière est faible et le chemin est étroit. Vous entendez des bruits bizarres. Que faites-vous ?",
+                choices: [
+                    { text: "Continuer d'avancer.", destination: 'page_49' },
+                    { text: "Rebrousser chemin.", destination: 'page_50' }
+                ]
+            },
+            'page_74': {
+                text: "Vous arrivez à un village. Les habitants sont en train de festoyer. Un vieil homme s'approche de vous et vous propose un verre de bienvenue. Il semble inoffensif, mais vous ne lui faites pas entièrement confiance. Que faites-vous ?",
+                choices: [
+                    { text: "Accepter le verre.", destination: 'page_7' },
+                    { text: "Refuser poliment et continuer votre chemin.", destination: 'page_8' }
+                ]
+            },
+            'page_75': {
+                text: "Le sentier est difficile, mais après une longue marche, vous arrivez à une clairière. Le soleil est au zénith. Vous apercevez une cabane sur votre gauche et un pont de pierre sur votre droite. Que faites-vous ?",
+                choices: [
+                    { text: "Aller à la cabane.", destination: 'page_35' },
+                    { text: "Traverser le pont de pierre.", destination: 'page_36' }
+                ]
+            },
+            'page_76': {
+                text: "Vous arrivez à une intersection. Un chemin mène à une ville, un autre à une mine. Que faites-vous ?",
+                choices: [
+                    { text: "Aller à la ville.", destination: 'page_3' },
+                    { text: "Aller à la mine.", destination: 'page_48' }
+                ]
+            },
+            'page_77': {
+                text: "Vous trouvez une boussole magique qui vous indique le chemin vers un trésor. Que faites-vous ?",
+                choices: [
+                    { text: "Suivre la boussole.", destination: 'page_60' },
+                    { text: "Ignorer la boussole et continuer.", destination: 'page_61' }
+                ]
+            },
+            'page_78': {
+                text: "Vous arrivez à une maison hantée. Vous entendez des bruits bizarres. Que faites-vous ?",
+                choices: [
+                    { text: "Entrer dans la maison.", destination: 'page_64' },
+                    { text: "Rebrousser chemin.", destination: 'page_65' }
+                ]
+            },
+            'page_79': {
+                text: "Vous arrivez à un lac. Un bateau est amarré sur la rive. Que faites-vous ?",
+                choices: [
+                    { text: "Prendre le bateau et naviguer.", destination: 'page_67' },
+                    { text: "Traverser le lac à la nage.", destination: 'page_68' }
+                ]
+            },
+            'page_80': {
+                text: "Vous arrivez à un pont. Le pont est en bois et semble instable. Vous entendez un bruit de pas derrière vous. Que faites-vous ?",
+                choices: [
+                    { text: "Traverser le pont.", destination: 'page_70' },
+                    { text: "Vous cacher sous le pont.", destination: 'page_71' }
+                ]
+            },
+            'page_81': {
+                text: "Le chemin vous mène à une mine abandonnée. Vous y entrez. La lumière est faible et le chemin est étroit. Vous entendez des bruits bizarres. Que faites-vous ?",
+                choices: [
+                    { text: "Continuer d'avancer.", destination: 'page_49' },
+                    { text: "Rebrousser chemin.", destination: 'page_50' }
+                ]
+            },
+            'page_82': {
+                text: "Vous arrivez à un village. Les habitants sont en train de festoyer. Un vieil homme s'approche de vous et vous propose un verre de bienvenue. Il semble inoffensif, mais vous ne lui faites pas entièrement confiance. Que faites-vous ?",
+                choices: [
+                    { text: "Accepter le verre.", destination: 'page_7' },
+                    { text: "Refuser poliment et continuer votre chemin.", destination: 'page_8' }
+                ]
+            },
+            'page_83': {
+                text: "Le sentier est difficile, mais après une longue marche, vous arrivez à une clairière. Le soleil est au zénith. Vous apercevez une cabane sur votre gauche et un pont de pierre sur votre droite. Que faites-vous ?",
+                choices: [
+                    { text: "Aller à la cabane.", destination: 'page_35' },
+                    { text: "Traverser le pont de pierre.", destination: 'page_36' }
+                ]
+            },
+            'page_84': {
+                text: "Vous arrivez à une intersection. Un chemin mène à une ville, un autre à une mine. Que faites-vous ?",
+                choices: [
+                    { text: "Aller à la ville.", destination: 'page_3' },
+                    { text: "Aller à la mine.", destination: 'page_48' }
+                ]
+            },
+            'page_85': {
+                text: "Vous trouvez une boussole magique qui vous indique le chemin vers un trésor. Que faites-vous ?",
+                choices: [
+                    { text: "Suivre la boussole.", destination: 'page_60' },
+                    { text: "Ignorer la boussole et continuer.", destination: 'page_61' }
+                ]
+            },
+            'page_86': {
+                text: "Vous arrivez à une maison hantée. Vous entendez des bruits bizarres. Que faites-vous ?",
+                choices: [
+                    { text: "Entrer dans la maison.", destination: 'page_64' },
+                    { text: "Rebrousser chemin.", destination: 'page_65' }
+                ]
+            },
+            'page_87': {
+                text: "Vous arrivez à un lac. Un bateau est amarré sur la rive. Que faites-vous ?",
+                choices: [
+                    { text: "Prendre le bateau et naviguer.", destination: 'page_67' },
+                    { text: "Traverser le lac à la nage.", destination: 'page_68' }
+                ]
+            },
+            'page_88': {
+                text: "Vous arrivez à un pont. Le pont est en bois et semble instable. Vous entendez un bruit de pas derrière vous. Que faites-vous ?",
+                choices: [
+                    { text: "Traverser le pont.", destination: 'page_70' },
+                    { text: "Vous cacher sous le pont.", destination: 'page_71' }
+                ]
+            },
+            'page_89': {
+                text: "Le chemin vous mène à une mine abandonnée. Vous y entrez. La lumière est faible et le chemin est étroit. Vous entendez des bruits bizarres. Que faites-vous ?",
+                choices: [
+                    { text: "Continuer d'avancer.", destination: 'page_49' },
+                    { text: "Rebrousser chemin.", destination: 'page_50' }
+                ]
+            },
+            'page_90': {
+                text: "Vous arrivez à un village. Les habitants sont en train de festoyer. Un vieil homme s'approche de vous et vous propose un verre de bienvenue. Il semble inoffensif, mais vous ne lui faites pas entièrement confiance. Que faites-vous ?",
+                choices: [
+                    { text: "Accepter le verre.", destination: 'page_7' },
+                    { text: "Refuser poliment et continuer votre chemin.", destination: 'page_8' }
+                ]
+            },
+            'page_91': {
+                text: "Le sentier est difficile, mais après une longue marche, vous arrivez à une clairière. Le soleil est au zénith. Vous apercevez une cabane sur votre gauche et un pont de pierre sur votre droite. Que faites-vous ?",
+                choices: [
+                    { text: "Aller à la cabane.", destination: 'page_35' },
+                    { text: "Traverser le pont de pierre.", destination: 'page_36' }
+                ]
+            },
+            'page_92': {
+                text: "Vous arrivez à une intersection. Un chemin mène à une ville, un autre à une mine. Que faites-vous ?",
+                choices: [
+                    { text: "Aller à la ville.", destination: 'page_3' },
+                    { text: "Aller à la mine.", destination: 'page_48' }
+                ]
+            },
+            'page_93': {
+                text: "Vous trouvez une boussole magique qui vous indique le chemin vers un trésor. Que faites-vous ?",
+                choices: [
+                    { text: "Suivre la boussole.", destination: 'page_60' },
+                    { text: "Ignorer la boussole et continuer.", destination: 'page_61' }
+                ]
+            },
+            'page_94': {
+                text: "Vous arrivez à une maison hantée. Vous entendez des bruits bizarres. Que faites-vous ?",
+                choices: [
+                    { text: "Entrer dans la maison.", destination: 'page_64' },
+                    { text: "Rebrousser chemin.", destination: 'page_65' }
+                ]
+            },
+            'page_95': {
+                text: "Vous arrivez à un lac. Un bateau est amarré sur la rive. Que faites-vous ?",
+                choices: [
+                    { text: "Prendre le bateau et naviguer.", destination: 'page_67' },
+                    { text: "Traverser le lac à la nage.", destination: 'page_68' }
+                ]
+            },
+            'page_96': {
+                text: "Vous arrivez à un pont. Le pont est en bois et semble instable. Vous entendez un bruit de pas derrière vous. Que faites-vous ?",
+                choices: [
+                    { text: "Traverser le pont.", destination: 'page_70' },
+                    { text: "Vous cacher sous le pont.", destination: 'page_71' }
+                ]
+            },
+            'page_97': {
+                text: "Le chemin vous mène à une mine abandonnée. Vous y entrez. La lumière est faible et le chemin est étroit. Vous entendez des bruits bizarres. Que faites-vous ?",
+                choices: [
+                    { text: "Continuer d'avancer.", destination: 'page_49' },
+                    { text: "Rebrousser chemin.", destination: 'page_50' }
+                ]
+            },
+            'page_98': {
+                text: "Vous arrivez à un village. Les habitants sont en train de festoyer. Un vieil homme s'approche de vous et vous propose un verre de bienvenue. Il semble inoffensif, mais vous ne lui faites pas entièrement confiance. Que faites-vous ?",
+                choices: [
+                    { text: "Accepter le verre.", destination: 'page_7' },
+                    { text: "Refuser poliment et continuer votre chemin.", destination: 'page_8' }
+                ]
+            },
+            'page_99': {
+                text: "Le sentier est difficile, mais après une longue marche, vous arrivez à une clairière. Le soleil est au zénith. Vous apercevez une cabane sur votre gauche et un pont de pierre sur votre droite. Que faites-vous ?",
+                choices: [
+                    { text: "Aller à la cabane.", destination: 'page_35' },
+                    { text: "Traverser le pont de pierre.", destination: 'page_36' }
+                ]
+            },
+            'page_100': {
+                text: "Vous arrivez à une intersection. Un chemin mène à une ville, un autre à une mine. Que faites-vous ?",
+                choices: [
+                    { text: "Aller à la ville.", destination: 'page_3' },
+                    { text: "Aller à la mine.", destination: 'page_48' }
+                ]
+            },
+            'page_101': {
+                text: "Vous trouvez une boussole magique qui vous indique le chemin vers un trésor. Que faites-vous ?",
+                choices: [
+                    { text: "Suivre la boussole.", destination: 'page_60' },
+                    { text: "Ignorer la boussole et continuer.", destination: 'page_61' }
+                ]
+            },
+            'page_102': {
+                text: "Vous arrivez à une maison hantée. Vous entendez des bruits bizarres. Que faites-vous ?",
+                choices: [
+                    { text: "Entrer dans la maison.", destination: 'page_64' },
+                    { text: "Rebrousser chemin.", destination: 'page_65' }
+                ]
+            },
+            'page_103': {
+                text: "Vous arrivez à un lac. Un bateau est amarré sur la rive. Que faites-vous ?",
+                choices: [
+                    { text: "Prendre le bateau et naviguer.", destination: 'page_67' },
+                    { text: "Traverser le lac à la nage.", destination: 'page_68' }
+                ]
+            },
+            'page_104': {
+                text: "Vous arrivez à un pont. Le pont est en bois et semble instable. Vous entendez un bruit de pas derrière vous. Que faites-vous ?",
+                choices: [
+                    { text: "Traverser le pont.", destination: 'page_70' },
+                    { text: "Vous cacher sous le pont.", destination: 'page_71' }
+                ]
+            }
+        };
+
+        const storyTextElement = document.getElementById('story-text');
+        const choicesElement = document.getElementById('choices');
+
+        // Fonction principale pour afficher une page de l'histoire
+        function showPage(pageId) {
+            const page = story[pageId];
+
+            if (!page) {
+                storyTextElement.innerHTML = `<p><strong>Erreur :</strong> Page "${pageId}" introuvable. Veuillez vérifier vos destinations.</p>`;
+                choicesElement.innerHTML = `<button onclick="showPage('start')">Recommencer</button>`;
+                return;
+            }
+
+            // Met à jour le texte de l'histoire
+            storyTextElement.textContent = page.text;
+
+            // Vide les choix précédents
+            choicesElement.innerHTML = '';
+
+            // Crée un bouton pour chaque choix
+            page.choices.forEach(choice => {
+                const button = document.createElement('button');
+                button.textContent = choice.text;
+                button.onclick = () => showPage(choice.destination);
+                choicesElement.appendChild(button);
+            });
+        }
+
+        // Démarre le jeu avec la page initiale lorsque la fenêtre est chargée
+        window.onload = function() {
+            showPage('start');
+        };
+    </script>
+</body>
+</html>
