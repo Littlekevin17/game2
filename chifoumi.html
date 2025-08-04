@@ -9,72 +9,19 @@
     <!-- Définit une police de caractères -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap">
     <style>
-        /* Styles personnalisés pour la mise en page et les animations */
-        body {
-            font-family: 'Inter', sans-serif;
-            @apply flex flex-col justify-center items-center min-h-screen bg-gray-100 text-gray-800 p-4;
-        }
-
-        /* Conteneur principal du jeu */
-        .game-container {
-            @apply bg-white p-6 rounded-2xl shadow-xl max-w-lg w-full flex flex-col gap-6;
-        }
-
-        h1 {
-            @apply text-4xl font-bold text-center text-purple-700 mb-4;
-        }
-
-        .score-display {
-            @apply flex justify-around items-center text-xl font-bold bg-purple-100 p-4 rounded-xl;
-        }
-        
-        .score-display span {
-            @apply text-purple-700;
-        }
-
-        .choices {
-            @apply flex justify-center gap-4 flex-wrap;
-        }
-
-        .choice-button {
-            @apply flex flex-col items-center justify-center p-6 bg-purple-600 text-white rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 hover:bg-purple-700 active:scale-95;
-            width: calc(33.33% - 1rem); /* 3 boutons par ligne avec espacement */
-            min-width: 100px;
-        }
-
-        /* Effet d'icône inversée pour les boutons */
-        .choice-button img {
-            filter: invert(100%);
-            @apply w-12 h-12 mb-2;
-        }
-
-        .result-display {
-            @apply text-center text-lg bg-gray-200 p-4 rounded-xl;
-        }
-
-        #resultText {
-            @apply text-2xl font-bold mt-2;
-        }
-
-        .reset-button {
-            @apply bg-red-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 hover:bg-red-600 active:scale-95;
-        }
-
-        /* Media Queries pour la responsivité */
-        @media (max-width: 768px) {
-            h1 { @apply text-3xl; }
-            .choice-button {
-                width: calc(50% - 0.5rem); /* 2 boutons par ligne sur tablette */
-                @apply p-4;
+        /* Animation de pulsation pour le gagnant */
+        @keyframes pulse-winner {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+            }
+            50% {
+                transform: scale(1.1);
+                box-shadow: 0 0 20px 10px rgba(76, 175, 80, 0.7);
             }
         }
-
-        @media (max-width: 480px) {
-            h1 { @apply text-2xl; }
-            .choice-button {
-                width: 100%; /* 1 bouton par ligne sur mobile */
-                @apply p-5;
-            }
+        .winner-animation {
+            animation: pulse-winner 1.5s infinite;
         }
 
         /* Styles spécifiques pour le mode paysage sur mobile */
@@ -96,41 +43,63 @@
             h1, .score-display, .result-display, .reset-button {
                 @apply flex-shrink-0;
             }
+            .choice-display-container {
+                @apply flex-col gap-4;
+            }
         }
     </style>
 </head>
-<body>
+<body class="flex flex-col justify-center items-center min-h-screen bg-gray-100 text-gray-800 p-4 font-inter">
 
-    <div class="game-container">
-        <h1>Pierre-Feuille-Ciseaux</h1>
+    <div class="game-container bg-white p-6 rounded-2xl shadow-xl max-w-lg w-full flex flex-col gap-6">
+        <h1 class="text-4xl font-bold text-center text-purple-700 mb-4">Pierre-Feuille-Ciseaux</h1>
 
-        <div class="score-display">
-            <p>Joueur: <span id="playerScore">0</span></p>
-            <p>Ordinateur: <span id="computerScore">0</span></p>
+        <div class="score-display flex justify-around items-center text-xl font-bold bg-purple-100 p-4 rounded-xl">
+            <p>Joueur: <span id="playerScore" class="text-purple-700">0</span></p>
+            <p>Ordinateur: <span id="computerScore" class="text-purple-700">0</span></p>
         </div>
 
-        <div class="choices">
-            <button id="pierre" class="choice-button">
-                <img src="https://img.icons8.com/ios-filled/50/000000/rock.png" alt="Pierre">
+        <!-- Section des choix affichés -->
+        <div class="choice-display-container flex justify-around items-center gap-8 my-4">
+            <div id="playerChoiceDisplay" class="flex flex-col items-center gap-2">
+                <p class="font-bold">Votre choix</p>
+                <img id="playerChoiceImg" class="w-24 h-24 transition-all duration-300 transform scale-0" alt="Votre choix">
+            </div>
+            <div id="result-text-container" class="flex flex-col items-center">
+                 <p id="resultText" class="text-2xl font-bold text-gray-600 transition-all duration-300">...</p>
+                 <span id="instructionText" class="text-xs text-gray-500">Cliquez pour jouer</span>
+            </div>
+            <div id="computerChoiceDisplay" class="flex flex-col items-center gap-2">
+                <p class="font-bold">Ordinateur</p>
+                <img id="computerChoiceImg" class="w-24 h-24 transition-all duration-300 transform scale-0" alt="Choix de l'ordinateur">
+            </div>
+        </div>
+
+        <div class="choices flex justify-center gap-4 flex-wrap">
+            <button id="pierre" class="choice-button flex flex-col items-center justify-center p-6 bg-purple-600 text-white rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 hover:bg-purple-700 active:scale-95 w-[calc(33.33%-1rem)] min-w-[100px]">
+                <img src="https://img.icons8.com/ios-filled/50/000000/rock.png" alt="Pierre" class="w-12 h-12 mb-2 filter invert">
                 <span>Pierre</span>
             </button>
-            <button id="feuille" class="choice-button">
-                <img src="https://img.icons8.com/ios-filled/50/000000/paper.png" alt="Feuille">
+            <button id="feuille" class="choice-button flex flex-col items-center justify-center p-6 bg-purple-600 text-white rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 hover:bg-purple-700 active:scale-95 w-[calc(33.33%-1rem)] min-w-[100px]">
+                <img src="https://img.icons8.com/ios-filled/50/000000/paper.png" alt="Feuille" class="w-12 h-12 mb-2 filter invert">
                 <span>Feuille</span>
             </button>
-            <button id="ciseaux" class="choice-button">
-                <img src="https://img.icons8.com/ios-filled/50/000000/scissors.png" alt="Ciseaux">
+            <button id="ciseaux" class="choice-button flex flex-col items-center justify-center p-6 bg-purple-600 text-white rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 hover:bg-purple-700 active:scale-95 w-[calc(33.33%-1rem)] min-w-[100px]">
+                <img src="https://img.icons8.com/ios-filled/50/000000/scissors.png" alt="Ciseaux" class="w-12 h-12 mb-2 filter invert">
                 <span>Ciseaux</span>
             </button>
         </div>
 
-        <div class="result-display">
-            <p id="playerChoiceDisplay">Votre choix: -</p>
-            <p id="computerChoiceDisplay">Choix de l'ordinateur: -</p>
-            <p id="resultText" class="text-gray-600">Cliquez sur une option pour commencer !</p>
+        <!-- Le bouton Rejouer a été déplacé dans le popup -->
+    </div>
+    
+    <!-- Fenêtre contextuelle (popup) de fin de partie -->
+    <div id="endGamePopup" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 transition-opacity duration-300 opacity-0 pointer-events-none">
+        <div class="bg-white p-8 rounded-xl shadow-2xl text-center flex flex-col gap-6 transform scale-95 transition-transform duration-300">
+            <h2 class="text-3xl font-bold text-purple-700">Partie Terminée !</h2>
+            <p id="finalResultText" class="text-xl font-semibold text-gray-700">Le joueur a gagné la partie ! 🎉</p>
+            <button id="popupResetButton" class="bg-red-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 hover:bg-red-600 active:scale-95">Rejouer</button>
         </div>
-
-        <button id="resetButton" class="reset-button">Rejouer</button>
     </div>
 
     <script>
@@ -140,18 +109,47 @@
             const playerButtons = document.querySelectorAll('.choice-button');
             const playerScoreSpan = document.getElementById('playerScore');
             const computerScoreSpan = document.getElementById('computerScore');
-            const playerChoiceDisplay = document.getElementById('playerChoiceDisplay');
-            const computerChoiceDisplay = document.getElementById('computerChoiceDisplay');
+            const playerChoiceImg = document.getElementById('playerChoiceImg');
+            const computerChoiceImg = document.getElementById('computerChoiceImg');
             const resultText = document.getElementById('resultText');
-            const resetButton = document.getElementById('resetButton');
+            const instructionText = document.getElementById('instructionText');
+            
+            // Éléments du popup
+            const endGamePopup = document.getElementById('endGamePopup');
+            const finalResultText = document.getElementById('finalResultText');
+            const popupResetButton = document.getElementById('popupResetButton');
 
             // Initialisation des scores
             let playerScore = 0;
             let computerScore = 0;
+            const winningScore = 10; // Score à atteindre pour gagner la partie
 
             // Options du jeu
             const choices = ['pierre', 'feuille', 'ciseaux'];
+            // Mappage des options aux images
+            const choiceImages = {
+                'pierre': 'https://img.icons8.com/ios-filled/100/000000/rock.png',
+                'feuille': 'https://img.icons8.com/ios-filled/100/000000/paper.png',
+                'ciseaux': 'https://img.icons8.com/ios-filled/100/000000/scissors.png'
+            };
 
+            /**
+             * Ajoute une animation de "gagnant" ou de "perdant".
+             * @param {HTMLElement} element L'élément à animer.
+             * @param {string} type Le type d'animation ('winner' ou 'loser').
+             */
+            function animateChoice(element, type) {
+                // Réinitialise les animations précédentes
+                element.classList.remove('winner-animation', 'opacity-50');
+
+                // Applique la nouvelle animation
+                if (type === 'winner') {
+                    element.classList.add('winner-animation');
+                } else if (type === 'loser') {
+                    element.classList.add('opacity-50');
+                }
+            }
+            
             /**
              * Choisit aléatoirement une option pour l'ordinateur.
              * @returns {string} Le choix de l'ordinateur.
@@ -182,32 +180,84 @@
             }
 
             /**
+             * Vérifie si un joueur a atteint le score de victoire et met fin à la partie si c'est le cas.
+             */
+            function checkGameWinner() {
+                if (playerScore === winningScore) {
+                    endGame('joueur');
+                } else if (computerScore === winningScore) {
+                    endGame('ordinateur');
+                }
+            }
+
+            /**
+             * Met fin à la partie et affiche le résultat final dans un popup.
+             * @param {string} winner Le nom du gagnant ('joueur' ou 'ordinateur').
+             */
+            function endGame(winner) {
+                if (winner === 'joueur') {
+                    finalResultText.textContent = `Vous avez gagné la partie ! 🎉`;
+                } else {
+                    finalResultText.textContent = `L'ordinateur a gagné la partie... 😭`;
+                }
+                
+                // Affiche le popup
+                endGamePopup.classList.remove('opacity-0', 'pointer-events-none');
+                endGamePopup.querySelector('div').classList.remove('scale-95');
+
+                // Désactive les boutons du jeu principal
+                playerButtons.forEach(button => button.disabled = true);
+            }
+
+            /**
              * Met à jour l'interface du jeu après un tour.
              * @param {string} playerChoice Le choix du joueur.
              * @param {string} computerChoice Le choix de l'ordinateur.
              * @param {string} result Le résultat du tour.
              */
             function updateGame(playerChoice, computerChoice, result) {
-                // Met à jour les affichages des choix
-                playerChoiceDisplay.textContent = `Votre choix: ${playerChoice.charAt(0).toUpperCase() + playerChoice.slice(1)}`;
-                computerChoiceDisplay.textContent = `Choix de l'ordinateur: ${computerChoice.charAt(0).toUpperCase() + computerChoice.slice(1)}`;
+                // Masque les images pendant la mise à jour pour un effet de transition
+                playerChoiceImg.classList.add('scale-0');
+                computerChoiceImg.classList.add('scale-0');
 
-                // Met à jour le texte du résultat et les scores
-                if (result === 'gagné') {
-                    playerScore++;
-                    resultText.textContent = 'Vous avez gagné ! 🎉';
-                    resultText.className = 'text-2xl font-bold mt-2 text-green-600';
-                } else if (result === 'perdu') {
-                    computerScore++;
-                    resultText.textContent = 'Vous avez perdu... �';
-                    resultText.className = 'text-2xl font-bold mt-2 text-red-600';
-                } else {
-                    resultText.textContent = 'Égalité ! 🤝';
-                    resultText.className = 'text-2xl font-bold mt-2 text-yellow-600';
-                }
+                // Attend un court instant pour la transition avant d'afficher les nouvelles images
+                setTimeout(() => {
+                    // Met à jour les affichages des choix avec les images
+                    playerChoiceImg.src = choiceImages[playerChoice];
+                    playerChoiceImg.alt = `Votre choix: ${playerChoice}`;
+                    computerChoiceImg.src = choiceImages[computerChoice];
+                    computerChoiceImg.alt = `Choix de l'ordinateur: ${computerChoice}`;
+                    
+                    // Affiche les images avec une transition
+                    playerChoiceImg.classList.remove('scale-0');
+                    computerChoiceImg.classList.remove('scale-0');
 
-                playerScoreSpan.textContent = playerScore;
-                computerScoreSpan.textContent = computerScore;
+                    // Met à jour le texte du résultat et les scores
+                    if (result === 'gagné') {
+                        playerScore++;
+                        resultText.textContent = `Vous avez gagné le tour !`;
+                        resultText.className = 'text-2xl font-bold mt-2 text-green-600 transition-all duration-300';
+                        animateChoice(playerChoiceImg, 'winner');
+                        animateChoice(computerChoiceImg, 'loser');
+                    } else if (result === 'perdu') {
+                        computerScore++;
+                        resultText.textContent = `Vous avez perdu le tour...`;
+                        resultText.className = 'text-2xl font-bold mt-2 text-red-600 transition-all duration-300';
+                        animateChoice(computerChoiceImg, 'winner');
+                        animateChoice(playerChoiceImg, 'loser');
+                    } else {
+                        resultText.textContent = `Égalité !`;
+                        resultText.className = 'text-2xl font-bold mt-2 text-yellow-600 transition-all duration-300';
+                        animateChoice(playerChoiceImg, 'none');
+                        animateChoice(computerChoiceImg, 'none');
+                    }
+
+                    playerScoreSpan.textContent = playerScore;
+                    computerScoreSpan.textContent = computerScore;
+                    instructionText.textContent = 'Continuez de jouer !';
+
+                    checkGameWinner(); // Vérifie si la partie est terminée
+                }, 300); // Durée de la transition CSS
             }
 
             /**
@@ -229,17 +279,23 @@
                 computerScore = 0;
                 playerScoreSpan.textContent = playerScore;
                 computerScoreSpan.textContent = computerScore;
-                playerChoiceDisplay.textContent = 'Votre choix: -';
-                computerChoiceDisplay.textContent = 'Choix de l\'ordinateur: -';
                 resultText.textContent = 'Cliquez sur une option pour commencer !';
-                resultText.className = 'text-2xl font-bold mt-2 text-gray-600';
+                resultText.className = 'text-2xl font-bold mt-2 text-gray-600 transition-all duration-300';
+                instructionText.textContent = 'Cliquez pour jouer';
+                playerChoiceImg.classList.add('scale-0');
+                computerChoiceImg.classList.add('scale-0');
+                // Réactive les boutons pour pouvoir rejouer
+                playerButtons.forEach(button => button.disabled = false);
+                // Cache le popup
+                endGamePopup.classList.add('opacity-0', 'pointer-events-none');
+                endGamePopup.querySelector('div').classList.add('scale-95');
             }
 
             // Ajoute des écouteurs d'événements aux boutons de choix et de réinitialisation
             playerButtons.forEach(button => {
                 button.addEventListener('click', playRound);
             });
-            resetButton.addEventListener('click', resetGame);
+            popupResetButton.addEventListener('click', resetGame);
         });
     </script>
 </body>
