@@ -48,18 +48,25 @@
 
         /* Styles pour les boutons tactiles */
         .touch-controls {
-            display: none;
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
+            display: none; /* Caché par défaut */
+            margin-top: 20px; /* Espace au-dessus du d-pad */
+            
+            /* Utilisation d'une grille CSS pour créer un d-pad */
+            display: grid;
+            grid-template-areas:
+                ". up ."
+                "left down right";
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: auto auto;
             gap: 10px;
-            flex-wrap: wrap;
-            justify-content: center;
+            
+            justify-items: center;
+            align-items: center;
+            width: 200px; /* Largeur fixe pour le d-pad */
         }
-
+        
         .touch-controls.active {
-            display: flex;
+            display: grid; /* Affiche la grille uniquement quand le jeu est lancé */
         }
 
         .touch-controls .button {
@@ -83,6 +90,12 @@
             background-color: rgba(255, 255, 255, 0.4);
         }
 
+        /* Placement des boutons dans la grille */
+        .up-button { grid-area: up; }
+        .left-button { grid-area: left; }
+        .down-button { grid-area: down; }
+        .right-button { grid-area: right; }
+
         @media (min-width: 768px) {
             .touch-controls.active {
                 display: none;
@@ -95,10 +108,10 @@
     <div id="score-display">Score: 0</div>
     <div id="game-container"></div>
     <div class="touch-controls">
-        <div class="button" data-direction="up">▲</div>
-        <div class="button" data-direction="left">◀</div>
-        <div class="button" data-direction="right">▶</div>
-        <div class="button" data-direction="down">▼</div>
+        <div class="button up-button" data-direction="up">▲</div>
+        <div class="button left-button" data-direction="left">◀</div>
+        <div class="button down-button" data-direction="down">▼</div>
+        <div class="button right-button" data-direction="right">▶</div>
     </div>
 
     <script>
@@ -127,6 +140,12 @@
             const GRID_SIZE = 20;
             GAME_WIDTH = Math.floor(GAME_WIDTH / GRID_SIZE) * GRID_SIZE;
             GAME_HEIGHT = Math.floor(GAME_HEIGHT / GRID_SIZE) * GRID_SIZE;
+            
+            // S'assurer que les dimensions ne sont pas trop petites
+            if (GAME_WIDTH < GRID_SIZE * 3 || GAME_HEIGHT < GRID_SIZE * 3) {
+                GAME_WIDTH = GRID_SIZE * 20;
+                GAME_HEIGHT = GRID_SIZE * 20;
+            }
         }
 
         updateGameDimensions();
@@ -191,6 +210,16 @@
          * Initialise tous les éléments du jeu.
          */
         function create() {
+            // Réinitialisation des variables de jeu
+            gameOver = false;
+            score = 0;
+            timeSinceLastMove = 0;
+            direction.set(0, 0);
+            lastDirection.set(0, 0);
+            
+            // Réinitialisation de l'affichage du score
+            scoreDisplay.textContent = 'Score: 0';
+
             // Initialisation du serpent avec des cercles
             snake = [];
             const GAME_WIDTH_IN_BLOCKS = GAME_WIDTH / GRID_SIZE;
@@ -231,10 +260,6 @@
             // Initialisation des contrôles clavier
             cursors = this.input.keyboard.createCursorKeys();
 
-            // Réinitialisation de l'affichage du score
-            score = 0;
-            scoreDisplay.textContent = 'Score: 0';
-
             // Écran de démarrage
             const startText = this.add.text(
                 GAME_WIDTH / 2,
@@ -248,22 +273,7 @@
                 }
             ).setOrigin(0.5);
 
-            // Événement pour commencer le jeu au premier mouvement du clavier
-            this.input.keyboard.on('keydown', (event) => {
-                if (gameOver || (direction.x !== 0 || direction.y !== 0)) return;
-                const code = event.code;
-                if (code === 'ArrowUp' || code === 'ArrowDown' || code === 'ArrowLeft' || code === 'ArrowRight') {
-                    startText.destroy();
-                    if (code === 'ArrowUp') direction.set(0, -1);
-                    else if (code === 'ArrowDown') direction.set(0, 1);
-                    else if (code === 'ArrowLeft') direction.set(-1, 0);
-                    else if (code === 'ArrowRight') direction.set(1, 0);
-                    lastDirection.copy(direction);
-                    touchControls.classList.add('active');
-                }
-            });
-            
-            // Événements pour les contrôles tactiles sur mobile
+            // Gérer les contrôles tactiles sur mobile
             let startX, startY;
 
             this.input.on('pointerdown', (pointer) => {
@@ -279,24 +289,16 @@
                 const diffX = endX - startX;
                 const diffY = endY - startY;
 
+                if (direction.x === 0 && direction.y === 0) {
+                    startText.destroy();
+                }
+
                 if (Math.abs(diffX) > Math.abs(diffY)) { // Mouvement horizontal
-                    if (direction.x !== 0 || direction.y !== 0) {
-                        if (diffX > 0 && lastDirection.x === 0) direction.set(1, 0);
-                        else if (diffX < 0 && lastDirection.x === 0) direction.set(-1, 0);
-                    } else { // Premier mouvement
-                        startText.destroy();
-                        if (diffX > 0) direction.set(1, 0);
-                        else direction.set(-1, 0);
-                    }
+                    if (diffX > 0 && lastDirection.x === 0) direction.set(1, 0);
+                    else if (diffX < 0 && lastDirection.x === 0) direction.set(-1, 0);
                 } else { // Mouvement vertical
-                    if (direction.x !== 0 || direction.y !== 0) {
-                        if (diffY > 0 && lastDirection.y === 0) direction.set(0, 1);
-                        else if (diffY < 0 && lastDirection.y === 0) direction.set(0, -1);
-                    } else { // Premier mouvement
-                        startText.destroy();
-                        if (diffY > 0) direction.set(0, 1);
-                        else direction.set(0, -1);
-                    }
+                    if (diffY > 0 && lastDirection.y === 0) direction.set(0, 1);
+                    else if (diffY < 0 && lastDirection.y === 0) direction.set(0, -1);
                 }
                 lastDirection.copy(direction);
                 touchControls.classList.add('active');
@@ -306,12 +308,16 @@
             document.querySelectorAll('.touch-controls .button').forEach(button => {
                 button.addEventListener('click', (e) => {
                     const dir = e.target.getAttribute('data-direction');
-                    if (gameOver || (direction.x !== 0 || direction.y !== 0)) return;
-                    startText.destroy();
-                    if (dir === 'up') direction.set(0, -1);
-                    else if (dir === 'down') direction.set(0, 1);
-                    else if (dir === 'left') direction.set(-1, 0);
-                    else if (dir === 'right') direction.set(1, 0);
+                    if (gameOver) return;
+
+                    if (direction.x === 0 && direction.y === 0) {
+                        startText.destroy();
+                    }
+
+                    if (dir === 'up' && lastDirection.y === 0) direction.set(0, -1);
+                    else if (dir === 'down' && lastDirection.y === 0) direction.set(0, 1);
+                    else if (dir === 'left' && lastDirection.x === 0) direction.set(-1, 0);
+                    else if (dir === 'right' && lastDirection.x === 0) direction.set(1, 0);
                     lastDirection.copy(direction);
                     touchControls.classList.add('active');
                 });
@@ -394,43 +400,60 @@
         /**
          * moveSnake(scene)
          * Gère le déplacement du serpent et les détections de collisions.
+         * Nouvelle logique: ajouter une tête et enlever la queue pour éviter les bugs.
          */
         function moveSnake(scene) {
             if (direction.x === 0 && direction.y === 0) return;
 
-            // Déplacer les segments du corps
-            for (let i = snake.length - 1; i > 0; i--) {
-                snake[i].x = snake[i - 1].x;
-                snake[i].y = snake[i - 1].y;
-            }
+            // 1. Déterminer la nouvelle position de la tête
+            const newHeadX = snake[0].x + direction.x * GRID_SIZE;
+            const newHeadY = snake[0].y + direction.y * GRID_SIZE;
 
-            // Mettre à jour la position de la tête du serpent
-            const oldHeadX = snake[0].x;
-            const oldHeadY = snake[0].y;
-            snake[0].x += direction.x * GRID_SIZE;
-            snake[0].y += direction.y * GRID_SIZE;
-            
-            // Mettre à jour la position du conteneur des yeux
-            snake[0].eyes.x = snake[0].x + GRID_SIZE / 2;
-            snake[0].eyes.y = snake[0].y + GRID_SIZE / 2;
-
-            // Faire pivoter les yeux en fonction de la direction du serpent
-            if (direction.x === 1) snake[0].eyes.setRotation(0); // Droite
-            else if (direction.x === -1) snake[0].eyes.setRotation(Math.PI); // Gauche
-            else if (direction.y === -1) snake[0].eyes.setRotation(-Math.PI / 2); // Haut
-            else if (direction.y === 1) snake[0].eyes.setRotation(Math.PI / 2); // Bas
-
-            // Vérification des collisions
-            // 1. Collision avec les murs
-            if (snake[0].x < 0 || snake[0].x >= GAME_WIDTH ||
-                snake[0].y < 0 || snake[0].y >= GAME_HEIGHT) {
+            // 2. Vérification des collisions avec les murs et le corps
+            if (newHeadX < 0 || newHeadX >= GAME_WIDTH ||
+                newHeadY < 0 || newHeadY >= GAME_HEIGHT) {
                 endGame(scene);
                 return;
             }
 
-            // 2. Collision avec la nourriture
-            // --- Correction de la détection de collision avec une distance plus fiable ---
-            const headCenter = { x: snake[0].x + GRID_SIZE / 2, y: snake[0].y + GRID_SIZE / 2 };
+            for (let i = 0; i < snake.length; i++) {
+                if (newHeadX === snake[i].x && newHeadY === snake[i].y) {
+                    endGame(scene);
+                    return;
+                }
+            }
+
+            // 3. Créer le nouveau segment de tête et le placer au début du tableau
+            const newHeadSegment = scene.add.circle(
+                newHeadX,
+                newHeadY,
+                GRID_SIZE / 2,
+                0x76c46a // Couleur de la tête
+            ).setOrigin(0);
+
+            // Mettre à jour la position des yeux de la nouvelle tête
+            const eyeSize = GRID_SIZE / 8;
+            const eye1 = scene.add.circle(-eyeSize, -eyeSize, eyeSize, 0x000000);
+            const eye2 = scene.add.circle(eyeSize, -eyeSize, eyeSize, 0x000000);
+            newHeadSegment.eyes = scene.add.container(newHeadSegment.x + GRID_SIZE / 2, newHeadSegment.y + GRID_SIZE / 2, [eye1, eye2]);
+            
+            // Faire pivoter les yeux de la nouvelle tête
+            if (direction.x === 1) newHeadSegment.eyes.setRotation(0); // Droite
+            else if (direction.x === -1) newHeadSegment.eyes.setRotation(Math.PI); // Gauche
+            else if (direction.y === -1) newHeadSegment.eyes.setRotation(-Math.PI / 2); // Haut
+            else if (direction.y === 1) newHeadSegment.eyes.setRotation(Math.PI / 2); // Bas
+            
+            // La tête du serpent est le segment 0. Le reste du corps est à 0x6aa84f
+            snake[0].setFillStyle(0x6aa84f);
+            
+            // Cacher les yeux de l'ancien segment de tête
+            snake[0].eyes.visible = false;
+            
+            // Ajouter la nouvelle tête au début du tableau
+            snake.unshift(newHeadSegment);
+
+            // 4. Vérification de la collision avec la nourriture
+            const headCenter = { x: newHeadSegment.x + GRID_SIZE / 2, y: newHeadSegment.y + GRID_SIZE / 2 };
             const foodCenter = { x: food.x + GRID_SIZE / 2, y: food.y + GRID_SIZE / 2 };
             if (Phaser.Math.Distance.Between(headCenter.x, headCenter.y, foodCenter.x, foodCenter.y) < GRID_SIZE) {
                 score++;
@@ -450,22 +473,10 @@
                     }
                 });
 
-                const lastSegment = snake[snake.length - 1];
-                const newSegment = scene.add.circle(
-                    lastSegment.x,
-                    lastSegment.y,
-                    GRID_SIZE / 2,
-                    0x6aa84f
-                ).setOrigin(0);
-                snake.push(newSegment);
-            }
-
-            // 3. Collision avec le corps du serpent
-            for (let i = 1; i < snake.length; i++) {
-                if (snake[0].x === snake[i].x && snake[0].y === snake[i].y) {
-                    endGame(scene);
-                    return;
-                }
+            } else {
+                // 5. Si pas de nourriture, enlever le dernier segment (la queue)
+                const tail = snake.pop();
+                tail.destroy();
             }
         }
 
@@ -494,10 +505,6 @@
             restartText.setInteractive();
             restartText.on('pointerdown', () => {
                 scene.scene.restart();
-                gameOver = false;
-                timeSinceLastMove = 0;
-                direction.set(0, 0);
-                lastDirection.set(0, 0);
             });
         }
     </script>
