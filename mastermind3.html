@@ -118,8 +118,10 @@ function create() {
     return { x: startX + col * GRID_STEP_X, y: startY + row * GRID_STEP_Y };
   };
   this.getFeedbackPosition = (row) => {
-    const fx = this.sys.game.config.width - 42;
-    const fy = 100 + row * GRID_STEP_Y;
+    //const fx = this.sys.game.config.width - 42;
+	const fx = this.getGridPosition(0, NB_PIONS - 1).x + PION_DISP + 45;
+    //const fy = 100 + row * GRID_STEP_Y;
+	const fy = 100 + row * GRID_STEP_Y + (PION_DISP - FEED_DISP * 2) / 2;
     return { x: fx, y: fy };
   };
 
@@ -141,7 +143,7 @@ function create() {
     let posF = this.getFeedbackPosition(row);
     for (let i = 0; i < NB_PIONS; i++) {
       let dx = (i % 2) * FEED_STEP, dy = Math.floor(i / 2) * FEED_STEP;
-      let feedback = this.add.image(posF.x + dx, posF.y + dy, 'feed_neutre')
+      let feedback = this.add.image(posF.x + dx, posF.y + dy - FEED_STEP / 2, 'feed_neutre')
         .setDisplaySize(FEED_DISP, FEED_DISP)
         .setVisible(false);
       feedbacks.push(feedback);
