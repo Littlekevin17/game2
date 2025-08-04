@@ -7,30 +7,43 @@
     <!-- Chargement de la bibliothèque Phaser 3 via un CDN -->
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
     <style>
-        /* Styles pour la page et le conteneur du jeu */
+        /* Styles pour la page et le conteneur principal */
         body {
             margin: 0;
             padding: 0;
-            overflow: hidden; /* Empêche le défilement de la page */
+            overflow: hidden;
             display: flex;
-            flex-direction: column; /* Organise les éléments en colonne */
-            justify-content: center; /* Centre le contenu verticalement */
-            align-items: center; /* Centre le contenu horizontalement */
-            min-height: 100vh; /* La hauteur minimale est de 100% de la hauteur de la fenêtre */
-            background-color: #2c3e50; /* Couleur de fond plus sombre */
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #2c3e50;
             font-family: 'Arial', sans-serif;
             color: #ecf0f1;
         }
 
+        #game-wrapper {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100vh;
+            /* Limiter la taille du jeu sur les grands écrans */
+            max-width: 800px;
+            max-height: 800px;
+            margin: auto;
+        }
+
+        /* Styles pour l'affichage du score */
         #score-display {
             font-size: 28px;
             font-weight: bold;
-            margin-bottom: 10px; /* Ajoute un peu d'espace entre le score et le jeu */
+            margin-bottom: 10px;
             text-shadow: 2px 2px 4px #000;
         }
 
+        /* Styles pour le conteneur du jeu Phaser */
         #game-container {
-            /* Le jeu Phaser sera injecté dans cet élément */
             width: 100%;
             height: 100%;
             display: flex;
@@ -39,19 +52,35 @@
         }
 
         canvas {
-            display: block; /* Supprime l'espace sous le canvas */
+            display: block;
             margin: 0 auto;
             border: 5px solid #34495e;
             box-shadow: 0 0 20px rgba(0,0,0,0.5);
             border-radius: 10px;
         }
 
+        /* Styles pour le bouton de plein écran */
+        #fullscreen-button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-top: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            transition: background-color 0.2s;
+        }
+
+        #fullscreen-button:hover {
+            background-color: #2980b9;
+        }
+        
         /* Styles pour les boutons tactiles */
         .touch-controls {
-            display: none; /* Caché par défaut */
-            margin-top: 20px; /* Espace au-dessus du d-pad */
-            
-            /* Utilisation d'une grille CSS pour créer un d-pad */
+            display: none;
+            margin-top: 20px;
             display: grid;
             grid-template-areas:
                 ". up ."
@@ -59,14 +88,13 @@
             grid-template-columns: 1fr 1fr 1fr;
             grid-template-rows: auto auto;
             gap: 10px;
-            
             justify-items: center;
             align-items: center;
-            width: 200px; /* Largeur fixe pour le d-pad */
+            width: 200px;
         }
-        
+
         .touch-controls.active {
-            display: grid; /* Affiche la grille uniquement quand le jeu est lancé */
+            display: grid;
         }
 
         .touch-controls .button {
@@ -90,28 +118,33 @@
             background-color: rgba(255, 255, 255, 0.4);
         }
 
-        /* Placement des boutons dans la grille */
         .up-button { grid-area: up; }
         .left-button { grid-area: left; }
         .down-button { grid-area: down; }
         .right-button { grid-area: right; }
 
         @media (min-width: 768px) {
-            .touch-controls.active {
+            .touch-controls {
                 display: none;
             }
         }
     </style>
 </head>
 <body>
-    <!-- Affichage du score en dehors du plateau de jeu -->
-    <div id="score-display">Score: 0</div>
-    <div id="game-container"></div>
-    <div class="touch-controls">
-        <div class="button up-button" data-direction="up">▲</div>
-        <div class="button left-button" data-direction="left">◀</div>
-        <div class="button down-button" data-direction="down">▼</div>
-        <div class="button right-button" data-direction="right">▶</div>
+    <div id="game-wrapper">
+        <!-- Affichage du score en dehors du plateau de jeu -->
+        <div id="score-display">Score: 0</div>
+        <!-- Conteneur pour le jeu Phaser -->
+        <div id="game-container"></div>
+        <!-- Contrôles tactiles pour mobile -->
+        <div id="touch-controls" class="touch-controls">
+            <div class="button up-button" data-direction="up">▲</div>
+            <div class="button left-button" data-direction="left">◀</div>
+            <div class="button down-button" data-direction="down">▼</div>
+            <div class="button right-button" data-direction="right">▶</div>
+        </div>
+        <!-- Bouton de plein écran -->
+        <button id="fullscreen-button" style="display: none;">Plein écran</button>
     </div>
 
     <script>
@@ -122,17 +155,16 @@
         let GAME_WIDTH, GAME_HEIGHT;
 
         function updateGameDimensions() {
-            const width = window.innerWidth;
-            const height = window.innerHeight;
+            const wrapper = document.getElementById('game-wrapper');
+            const width = wrapper.clientWidth;
+            const height = wrapper.clientHeight;
             
             // Calcul des dimensions du jeu en fonction de la taille de l'écran
             if (width / height > ASPECT_RATIO) {
-                // Limité par la hauteur
-                GAME_HEIGHT = height - 100; // Laisser de la place pour le score et les marges
+                GAME_HEIGHT = height - 150; // Laisser de la place pour le score et les contrôles
                 GAME_WIDTH = GAME_HEIGHT * ASPECT_RATIO;
             } else {
-                // Limité par la largeur
-                GAME_WIDTH = width - 40; // Laisser de la place pour les marges
+                GAME_WIDTH = width - 40;
                 GAME_HEIGHT = GAME_WIDTH / ASPECT_RATIO;
             }
 
@@ -141,7 +173,6 @@
             GAME_WIDTH = Math.floor(GAME_WIDTH / GRID_SIZE) * GRID_SIZE;
             GAME_HEIGHT = Math.floor(GAME_HEIGHT / GRID_SIZE) * GRID_SIZE;
             
-            // S'assurer que les dimensions ne sont pas trop petites
             if (GAME_WIDTH < GRID_SIZE * 3 || GAME_HEIGHT < GRID_SIZE * 3) {
                 GAME_WIDTH = GRID_SIZE * 20;
                 GAME_HEIGHT = GRID_SIZE * 20;
@@ -151,7 +182,6 @@
         updateGameDimensions();
         window.addEventListener('resize', () => {
             updateGameDimensions();
-            // Redimensionner le jeu si nécessaire
             if (game && game.isBooted) {
                 game.scale.resize(GAME_WIDTH, GAME_HEIGHT);
             }
@@ -165,62 +195,52 @@
             type: Phaser.AUTO,
             width: GAME_WIDTH,
             height: GAME_HEIGHT,
-            parent: 'game-container', // L'ID de l'élément HTML où le jeu sera injecté
+            parent: 'game-container',
             scene: {
                 preload: preload,
                 create: create,
                 update: update
             },
             scale: {
-                // Rendre le jeu responsive
                 mode: Phaser.Scale.FIT,
                 autoCenter: Phaser.Scale.CENTER_BOTH
             },
-            backgroundColor: '#3f68a7' // Nouvelle couleur de fond du plateau
+            backgroundColor: '#3f68a7'
         };
 
-        // Création d'une nouvelle instance de jeu Phaser
         const game = new Phaser.Game(config);
 
-        // Variables de jeu (déclarées globalement pour être accessibles par toutes les fonctions)
         let snake;
         let food;
-        let cursors; // Pour les contrôles clavier
+        let cursors;
         let score = 0;
         let gameOver = false;
-        let direction = new Phaser.Math.Vector2(0, 0); // Direction actuelle du serpent
-        let lastDirection = new Phaser.Math.Vector2(0, 0); // Dernière direction valide pour éviter les demi-tours
+        let direction = new Phaser.Math.Vector2(0, 0);
+        let lastDirection = new Phaser.Math.Vector2(0, 0);
         let timeSinceLastMove = 0;
-        const MOVE_INTERVAL = 150; // Vitesse initiale du serpent (150 ms par déplacement)
+        const MOVE_INTERVAL = 150;
 
-        // Référence à l'élément HTML du score
         const scoreDisplay = document.getElementById('score-display');
-        const touchControls = document.querySelector('.touch-controls');
+        const touchControls = document.getElementById('touch-controls');
+        const gameWrapper = document.getElementById('game-wrapper');
+        const fullscreenButton = document.getElementById('fullscreen-button');
 
-        // --- Fonctions de la scène Phaser ---
-
-        /**
-         * preload()
-         * Fonction pour charger les assets (images, sons). Vide car nous dessinons les formes.
-         */
         function preload() {}
 
-        /**
-         * create()
-         * Initialise tous les éléments du jeu.
-         */
         function create() {
-            // Réinitialisation des variables de jeu
             gameOver = false;
             score = 0;
             timeSinceLastMove = 0;
             direction.set(0, 0);
             lastDirection.set(0, 0);
-            
-            // Réinitialisation de l'affichage du score
             scoreDisplay.textContent = 'Score: 0';
+            touchControls.classList.remove('active');
 
-            // Initialisation du serpent avec des cercles
+            // Afficher le bouton de plein écran si la fonctionnalité est supportée
+            if (document.fullscreenEnabled) {
+                fullscreenButton.style.display = 'block';
+            }
+
             snake = [];
             const GAME_WIDTH_IN_BLOCKS = GAME_WIDTH / GRID_SIZE;
             const GAME_HEIGHT_IN_BLOCKS = GAME_HEIGHT / GRID_SIZE;
@@ -229,25 +249,20 @@
                     (GAME_WIDTH_IN_BLOCKS / 2 * GRID_SIZE) - (i * GRID_SIZE),
                     GAME_HEIGHT_IN_BLOCKS / 2 * GRID_SIZE,
                     GRID_SIZE / 2,
-                    0x6aa84f // Corps du serpent
+                    0x6aa84f
                 ).setOrigin(0);
                 snake.push(segment);
             }
-            // Créer la tête du serpent
             const head = snake[0];
-            head.setFillStyle(0x76c46a); // Couleur différente pour la tête
+            head.setFillStyle(0x76c46a);
             const eyeSize = GRID_SIZE / 8;
             const eye1 = this.add.circle(-eyeSize, -eyeSize, eyeSize, 0x000000);
             const eye2 = this.add.circle(eyeSize, -eyeSize, eyeSize, 0x000000);
-            
-            // Mettre les yeux dans un groupe pour les déplacer avec la tête
             head.eyes = this.add.container(head.x + GRID_SIZE / 2, head.y + GRID_SIZE / 2, [eye1, eye2]);
 
-            // Initialisation de la nourriture avec un cercle
             food = this.add.graphics();
             placeFood(this);
 
-            // Créer l'animation de pulsation pour la nourriture
             this.tweens.add({
                 targets: food,
                 scale: 1.1,
@@ -257,10 +272,8 @@
                 ease: 'Sine.easeInOut'
             });
 
-            // Initialisation des contrôles clavier
             cursors = this.input.keyboard.createCursorKeys();
 
-            // Écran de démarrage
             const startText = this.add.text(
                 GAME_WIDTH / 2,
                 GAME_HEIGHT / 2,
@@ -273,17 +286,27 @@
                 }
             ).setOrigin(0.5);
 
-            // Gérer les contrôles tactiles sur mobile
-            let startX, startY;
+            // Gestion des contrôles clavier (sans plein écran)
+            this.input.keyboard.on('keydown', () => {
+                if (direction.x === 0 && direction.y === 0) {
+                    startText.destroy();
+                    // Afficher les commandes tactiles après le début du jeu
+                    if (window.innerWidth < 768) {
+                       touchControls.classList.add('active');
+                    }
+                }
+            });
 
+            // Gestion des contrôles tactiles (sans plein écran)
+            let startX, startY;
             this.input.on('pointerdown', (pointer) => {
+                if (gameOver) return;
                 startX = pointer.x;
                 startY = pointer.y;
             });
 
             this.input.on('pointerup', (pointer) => {
                 if (gameOver) return;
-
                 const endX = pointer.x;
                 const endY = pointer.y;
                 const diffX = endX - startX;
@@ -291,91 +314,61 @@
 
                 if (direction.x === 0 && direction.y === 0) {
                     startText.destroy();
-                    // Lancer le mode plein écran sur la première interaction de l'utilisateur
-                    if (!this.scale.isFullscreen) {
-                        this.scale.startFullscreen();
+                    // Afficher les commandes tactiles après le début du jeu
+                    if (window.innerWidth < 768) {
+                       touchControls.classList.add('active');
                     }
                 }
 
-                if (Math.abs(diffX) > Math.abs(diffY)) { // Mouvement horizontal
+                if (Math.abs(diffX) > Math.abs(diffY)) {
                     if (diffX > 0 && lastDirection.x === 0) direction.set(1, 0);
                     else if (diffX < 0 && lastDirection.x === 0) direction.set(-1, 0);
-                } else { // Mouvement vertical
+                } else {
                     if (diffY > 0 && lastDirection.y === 0) direction.set(0, 1);
                     else if (diffY < 0 && lastDirection.y === 0) direction.set(0, -1);
                 }
                 lastDirection.copy(direction);
-                touchControls.classList.add('active');
             });
 
-            // Gérer les clics sur les boutons tactiles
             document.querySelectorAll('.touch-controls .button').forEach(button => {
                 button.addEventListener('click', (e) => {
-                    const dir = e.target.getAttribute('data-direction');
                     if (gameOver) return;
-
                     if (direction.x === 0 && direction.y === 0) {
                         startText.destroy();
-                        // Lancer le mode plein écran sur la première interaction de l'utilisateur
-                        if (!this.scale.isFullscreen) {
-                            this.scale.startFullscreen();
-                        }
                     }
-
+                    const dir = e.target.getAttribute('data-direction');
                     if (dir === 'up' && lastDirection.y === 0) direction.set(0, -1);
                     else if (dir === 'down' && lastDirection.y === 0) direction.set(0, 1);
                     else if (dir === 'left' && lastDirection.x === 0) direction.set(-1, 0);
                     else if (dir === 'right' && lastDirection.x === 0) direction.set(1, 0);
                     lastDirection.copy(direction);
-                    touchControls.classList.add('active');
                 });
             });
 
-            // Gérer l'affichage des contrôles tactiles en fonction de la taille de l'écran
             if (window.innerWidth >= 768) {
                 touchControls.classList.remove('active');
+            } else {
+                touchControls.classList.add('active');
             }
         }
 
-        /**
-         * update(time, delta)
-         * Boucle de jeu principale, appelée à chaque frame.
-         */
         function update(time, delta) {
             if (gameOver) return;
 
-            // Gestion des entrées clavier
             if (cursors.left.isDown && lastDirection.x === 0) {
                 direction.set(-1, 0);
                 lastDirection.copy(direction);
-                // Lancer le mode plein écran sur la première interaction clavier
-                if (!this.scale.isFullscreen && direction.x !== 0 && direction.y !== 0) {
-                    this.scale.startFullscreen();
-                }
             } else if (cursors.right.isDown && lastDirection.x === 0) {
                 direction.set(1, 0);
                 lastDirection.copy(direction);
-                // Lancer le mode plein écran sur la première interaction clavier
-                if (!this.scale.isFullscreen && direction.x !== 0 && direction.y !== 0) {
-                    this.scale.startFullscreen();
-                }
             } else if (cursors.up.isDown && lastDirection.y === 0) {
                 direction.set(0, -1);
                 lastDirection.copy(direction);
-                // Lancer le mode plein écran sur la première interaction clavier
-                if (!this.scale.isFullscreen && direction.x !== 0 && direction.y !== 0) {
-                    this.scale.startFullscreen();
-                }
             } else if (cursors.down.isDown && lastDirection.y === 0) {
                 direction.set(0, 1);
                 lastDirection.copy(direction);
-                // Lancer le mode plein écran sur la première interaction clavier
-                if (!this.scale.isFullscreen && direction.x !== 0 && direction.y !== 0) {
-                    this.scale.startFullscreen();
-                }
             }
 
-            // Gérer le mouvement du serpent à intervalles réguliers
             timeSinceLastMove += delta;
             if (timeSinceLastMove >= MOVE_INTERVAL) {
                 timeSinceLastMove = 0;
@@ -383,23 +376,15 @@
             }
         }
 
-        // --- Fonctions utilitaires du jeu ---
-
-        /**
-         * placeFood(scene)
-         * Place la nourriture sur une position aléatoire valide.
-         */
         function placeFood(scene) {
             let foodX, foodY;
             let validPosition = false;
-
             const GAME_WIDTH_IN_BLOCKS = GAME_WIDTH / GRID_SIZE;
             const GAME_HEIGHT_IN_BLOCKS = GAME_HEIGHT / GRID_SIZE;
 
             while (!validPosition) {
                 foodX = Phaser.Math.Between(0, GAME_WIDTH_IN_BLOCKS - 1);
                 foodY = Phaser.Math.Between(0, GAME_HEIGHT_IN_BLOCKS - 1);
-
                 validPosition = true;
                 for (let i = 0; i < snake.length; i++) {
                     if (snake[i].x === foodX * GRID_SIZE && snake[i].y === foodY * GRID_SIZE) {
@@ -409,33 +394,21 @@
                 }
             }
 
-            // Mettre à jour la position du conteneur de la nourriture
             food.x = foodX * GRID_SIZE;
             food.y = foodY * GRID_SIZE;
-            
-            // Dessiner la pomme à des coordonnées locales
             food.clear();
-            food.fillStyle(0xe74c3c, 1); // Corps de la pomme
+            food.fillStyle(0xe74c3c, 1);
             food.fillCircle(GRID_SIZE / 2, GRID_SIZE / 2, GRID_SIZE / 2);
-            food.fillStyle(0x2ecc71, 1); // Tige de la pomme
+            food.fillStyle(0x2ecc71, 1);
             food.fillRect(GRID_SIZE / 2 - GRID_SIZE / 8, GRID_SIZE / 2 - GRID_SIZE, GRID_SIZE / 4, GRID_SIZE / 2);
         }
 
-        /**
-         * moveSnake(scene)
-         * Gère le déplacement du serpent et les détections de collisions.
-         * Nouvelle logique: ajouter une tête et enlever la queue pour éviter les bugs.
-         */
         function moveSnake(scene) {
             if (direction.x === 0 && direction.y === 0) return;
-
-            // 1. Déterminer la nouvelle position de la tête
             const newHeadX = snake[0].x + direction.x * GRID_SIZE;
             const newHeadY = snake[0].y + direction.y * GRID_SIZE;
 
-            // 2. Vérification des collisions avec les murs et le corps
-            if (newHeadX < 0 || newHeadX >= GAME_WIDTH ||
-                newHeadY < 0 || newHeadY >= GAME_HEIGHT) {
+            if (newHeadX < 0 || newHeadX >= GAME_WIDTH || newHeadY < 0 || newHeadY >= GAME_HEIGHT) {
                 endGame(scene);
                 return;
             }
@@ -447,43 +420,31 @@
                 }
             }
 
-            // 3. Créer le nouveau segment de tête et le placer au début du tableau
             const newHeadSegment = scene.add.circle(
                 newHeadX,
                 newHeadY,
                 GRID_SIZE / 2,
-                0x76c46a // Couleur de la tête
+                0x76c46a
             ).setOrigin(0);
-
-            // Mettre à jour la position des yeux de la nouvelle tête
             const eyeSize = GRID_SIZE / 8;
             const eye1 = scene.add.circle(-eyeSize, -eyeSize, eyeSize, 0x000000);
             const eye2 = scene.add.circle(eyeSize, -eyeSize, eyeSize, 0x000000);
             newHeadSegment.eyes = scene.add.container(newHeadSegment.x + GRID_SIZE / 2, newHeadSegment.y + GRID_SIZE / 2, [eye1, eye2]);
             
-            // Faire pivoter les yeux de la nouvelle tête
-            if (direction.x === 1) newHeadSegment.eyes.setRotation(0); // Droite
-            else if (direction.x === -1) newHeadSegment.eyes.setRotation(Math.PI); // Gauche
-            else if (direction.y === -1) newHeadSegment.eyes.setRotation(-Math.PI / 2); // Haut
-            else if (direction.y === 1) newHeadSegment.eyes.setRotation(Math.PI / 2); // Bas
+            if (direction.x === 1) newHeadSegment.eyes.setRotation(0);
+            else if (direction.x === -1) newHeadSegment.eyes.setRotation(Math.PI);
+            else if (direction.y === -1) newHeadSegment.eyes.setRotation(-Math.PI / 2);
+            else if (direction.y === 1) newHeadSegment.eyes.setRotation(Math.PI / 2);
             
-            // La tête du serpent est le segment 0. Le reste du corps est à 0x6aa84f
             snake[0].setFillStyle(0x6aa84f);
-            
-            // Cacher les yeux de l'ancien segment de tête
-            snake[0].eyes.visible = false;
-            
-            // Ajouter la nouvelle tête au début du tableau
+            if (snake[0].eyes) snake[0].eyes.visible = false;
             snake.unshift(newHeadSegment);
 
-            // 4. Vérification de la collision avec la nourriture
             const headCenter = { x: newHeadSegment.x + GRID_SIZE / 2, y: newHeadSegment.y + GRID_SIZE / 2 };
             const foodCenter = { x: food.x + GRID_SIZE / 2, y: food.y + GRID_SIZE / 2 };
             if (Phaser.Math.Distance.Between(headCenter.x, headCenter.y, foodCenter.x, foodCenter.y) < GRID_SIZE) {
                 score++;
                 scoreDisplay.textContent = 'Score: ' + score;
-                
-                // Ajouter un effet visuel de pop
                 scene.tweens.add({
                     targets: food,
                     scale: 0,
@@ -496,24 +457,23 @@
                         placeFood(scene);
                     }
                 });
-
             } else {
-                // 5. Si pas de nourriture, enlever le dernier segment (la queue)
                 const tail = snake.pop();
                 tail.destroy();
             }
         }
 
-        /**
-         * endGame(scene)
-         * Gère la fin de partie et le redémarrage.
-         */
         function endGame(scene) {
             gameOver = true;
             direction.set(0, 0);
             lastDirection.set(0, 0);
-            touchControls.classList.remove('active');
-
+            if (touchControls) {
+                touchControls.classList.remove('active');
+            }
+            if (fullscreenButton) {
+                fullscreenButton.style.display = 'none';
+            }
+            
             const restartText = scene.add.text(
                 GAME_WIDTH / 2,
                 GAME_HEIGHT / 2,
@@ -531,6 +491,13 @@
                 scene.scene.restart();
             });
         }
+        
+        // Écouteur d'événement pour le bouton de plein écran
+        fullscreenButton.addEventListener('click', () => {
+            if (document.fullscreenEnabled) {
+                gameWrapper.requestFullscreen();
+            }
+        });
     </script>
 </body>
 </html>
