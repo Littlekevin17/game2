@@ -60,9 +60,9 @@
         </div>
 
         <!-- Section des choix affichés -->
-        <div class="choice-display-container flex justify-around items-center gap-8 my-4">
+        <div class="choice-display-container grid grid-cols-3 items-center gap-4 my-4 text-center">
             <div id="playerChoiceDisplay" class="flex flex-col items-center gap-2">
-                <p class="font-bold">Votre choix</p>
+                <p class="font-bold">Joueur</p>
                 <img id="playerChoiceImg" class="w-24 h-24 transition-all duration-300 transform scale-0" alt="Votre choix">
             </div>
             <div id="result-text-container" class="flex flex-col items-center">
@@ -75,16 +75,16 @@
             </div>
         </div>
 
-        <div class="choices flex justify-center gap-4 flex-wrap">
-            <button id="pierre" class="choice-button flex flex-col items-center justify-center p-6 bg-purple-600 text-white rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 hover:bg-purple-700 active:scale-95 w-[calc(33.33%-1rem)] min-w-[100px]">
+        <div class="choices grid grid-cols-3 gap-4">
+            <button id="pierre" class="choice-button flex flex-col items-center justify-center p-6 bg-purple-600 text-white rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 hover:bg-purple-700 active:scale-95">
                 <img src="https://img.icons8.com/ios-filled/50/000000/rock.png" alt="Pierre" class="w-12 h-12 mb-2 filter invert">
                 <span>Pierre</span>
             </button>
-            <button id="feuille" class="choice-button flex flex-col items-center justify-center p-6 bg-purple-600 text-white rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 hover:bg-purple-700 active:scale-95 w-[calc(33.33%-1rem)] min-w-[100px]">
+            <button id="feuille" class="choice-button flex flex-col items-center justify-center p-6 bg-purple-600 text-white rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 hover:bg-purple-700 active:scale-95">
                 <img src="https://img.icons8.com/ios-filled/50/000000/paper.png" alt="Feuille" class="w-12 h-12 mb-2 filter invert">
                 <span>Feuille</span>
             </button>
-            <button id="ciseaux" class="choice-button flex flex-col items-center justify-center p-6 bg-purple-600 text-white rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 hover:bg-purple-700 active:scale-95 w-[calc(33.33%-1rem)] min-w-[100px]">
+            <button id="ciseaux" class="choice-button flex flex-col items-center justify-center p-6 bg-purple-600 text-white rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 hover:bg-purple-700 active:scale-95">
                 <img src="https://img.icons8.com/ios-filled/50/000000/scissors.png" alt="Ciseaux" class="w-12 h-12 mb-2 filter invert">
                 <span>Ciseaux</span>
             </button>
